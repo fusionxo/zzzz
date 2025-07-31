@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Calverse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            /* Professional dual-corner gradient */
+            background-image:
+                radial-gradient(ellipse at top right, rgba(251, 191, 36, 0.15), transparent 50%),
+                radial-gradient(ellipse at bottom left, rgba(251, 191, 36, 0.15), transparent 50%);
+        }
+        .form-container {
+            background: linear-gradient(145deg, #1C1C1C, #121212);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .gradient-btn {
+            background-image: linear-gradient(to right, #FBBF24, #F59E0B);
+        }
+        .gradient-btn:hover {
+            box-shadow: 0 10px 20px rgba(251, 191, 36, 0.25);
+            transform: translateY(-2px);
+        }
+        .google-btn {
+            background-color: #1f2937; /* gray-800 */
+            border: 1px solid #4b5563; /* gray-600 */
+        }
+        .google-btn:hover {
+            background-color: #374151; /* gray-700 */
+        }
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #1f2937; /* text-gray-800 */
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #6b7280; /* gray-500 */
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #4b5563; /* gray-600 */
+        }
+        .divider:not(:empty)::before {
+            margin-right: .5em;
+        }
+        .divider:not(:empty)::after {
+            margin-left: .5em;
+        }
+    </style>
+</head>
+<body class="text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <div class="form-container max-w-md w-full p-8 sm:p-10 rounded-2xl shadow-2xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-white">Create Your Account</h1>
+            <p class="text-gray-400 mt-2">Join Calverse and start your journey.</p>
+        </header>
+
+        <form id="register-form" class="space-y-6">
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-400 mb-2">Email Address</label>
+                <input type="email" id="email" name="email" required
+                    class="w-full px-4 py-3 rounded-lg bg-black/30 border-2 border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                    placeholder="you@example.com">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-400 mb-2">Password</label>
+                <input type="password" id="password" name="password" required minlength="6"
+                    class="w-full px-4 py-3 rounded-lg bg-black/30 border-2 border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                    placeholder="6+ characters">
+            </div>
+
+             <div>
+                <label for="confirm-password" class="block text-sm font-medium text-gray-400 mb-2">Confirm Password</label>
+                <input type="password" id="confirm-password" name="confirm-password" required minlength="6"
+                    class="w-full px-4 py-3 rounded-lg bg-black/30 border-2 border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+                    placeholder="Re-enter password">
+            </div>
+
+            <div>
+                <button type="submit" id="register-btn"
+                    class="w-full gradient-btn text-gray-900 font-bold py-3 px-4 rounded-lg transition transform flex items-center justify-center">
+                    <span id="btn-text">Register</span>
+                    <span id="loader" class="hidden loader"></span>
+                </button>
+            </div>
+        </form>
+
+        <div class="divider">or</div>
+
+        <div>
+            <button id="google-signup-btn" class="w-full google-btn text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-2">
+                 <svg class="w-5 h-5" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C42.012,35.393,44,30.228,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                </svg>
+                <span>Sign up with Google</span>
+            </button>
+        </div>
+
+
+        <div id="alert-box" class="hidden mt-6 p-4 rounded-lg text-sm text-center"></div>
+
+        <div class="mt-8 text-center">
+            <p class="text-sm text-gray-500">
+                Already have an account?
+                <a href="/index.html" class="font-medium text-amber-400 hover:underline">Log in</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Load config first, then the page-specific script -->
+    <script type="module" src="/scripts/firebase-init.js"></script>
+    <script type="module" src="/scripts/register.js"></script>
+</body>
+</html>

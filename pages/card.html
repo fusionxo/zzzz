@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Credit Cards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom font family */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* bg-slate-900 */
+        }
+        .font-spacemono {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* 3D flip effect setup */
+        .card-container {
+            perspective: 1500px;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        /* Hide back of card initially */
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Safari */
+            backface-visibility: hidden;
+            border-radius: 1.5rem; /* 24px */
+            overflow: hidden; /* Ensures glare doesn't spill out */
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* JS-driven flip */
+        .card-inner.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        /* Glare effect for front of card */
+        .glare {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+            pointer-events: none; /* Allows clicks to go through to the card */
+        }
+
+        /* Holographic effect for logo */
+        .hologram {
+            background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+            background-size: 400% 400%;
+            animation: holographic-shine 5s ease infinite;
+        }
+
+        @keyframes holographic-shine {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+    </style>
+</head>
+<body class="text-white flex flex-col items-center justify-center min-h-screen p-4 sm:p-6">
+
+    <!-- Warning Heading -->
+    <header class="text-center mb-8 md:mb-12">
+        <h1 class="text-2xl md:text-3xl font-bold text-yellow-400 tracking-wider">This is for testing purposes.</h1>
+        <p class="text-lg md:text-xl text-slate-300">Do not misuse it.</p>
+    </header>
+
+    <!-- Cards Wrapper -->
+    <main class="w-full max-w-4xl flex flex-col lg:flex-row justify-center items-center gap-8 md:gap-12">
+
+        <!-- Card 1 -->
+        <div class="card-container w-full max-w-sm h-56 sm:h-64 cursor-pointer group" tabindex="0">
+            <div class="card-inner">
+                <!-- Card Front -->
+                <div class="card-front bg-gradient-to-br from-blue-700 via-blue-900 to-slate-900 p-6 flex flex-col justify-between shadow-2xl">
+                    <div class="glare"></div>
+                    <div>
+                        <div class="flex justify-between items-start">
+                             <div class="font-bold text-xl text-slate-200">Galaxy Bank</div>
+                             <div class="w-14 h-10 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-lg shadow-inner-md border border-yellow-600"></div>
+                        </div>
+                    </div>
+                    <div class="text-slate-100 z-10">
+                        <div class="font-spacemono text-xl sm:text-2xl tracking-widest mb-4">
+                            6522 1125 3535 7890
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <p class="text-xs uppercase text-slate-400">Card Holder</p>
+                                <p class="font-medium tracking-wider">SUMIT KUMAR</p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase text-slate-400">Expires</p>
+                                <p class="font-medium">12/30</p>
+                            </div>
+                            <div class="w-14 h-12 flex items-center justify-center">
+                                <div class="w-12 h-12 rounded-full hologram"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Card Back -->
+                <div class="card-back bg-gradient-to-br from-blue-800 to-slate-900 p-2 flex flex-col justify-start shadow-2xl">
+                    <div class="w-full h-14 bg-black mt-6"></div>
+                    <div class="bg-gray-300 mt-4 mx-4 p-2 h-10 flex justify-end items-center rounded-sm">
+                        <div class="bg-white w-full h-full italic text-right pr-4 text-black font-mono text-lg">234</div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-4 px-4">This card is issued by Galaxy Bank under license. Use of this card constitutes acceptance of the terms and conditions of the Cardholder Agreement.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card-container w-full max-w-sm h-56 sm:h-64 cursor-pointer group" tabindex="0">
+            <div class="card-inner">
+                <!-- Card Front -->
+                <div class="card-front bg-gradient-to-br from-gray-700 via-gray-800 to-black p-6 flex flex-col justify-between shadow-2xl">
+                    <div class="glare"></div>
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-xl text-slate-200">Apex Finance</div>
+                            <div class="w-14 h-10 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-lg shadow-inner-md border border-yellow-600"></div>
+                        </div>
+                    </div>
+                    <div class="text-slate-100 z-10">
+                        <div class="font-spacemono text-xl sm:text-2xl tracking-widest mb-4">
+                            6522 9421 5465 9121
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <p class="text-xs uppercase text-slate-400">Card Holder</p>
+                                <p class="font-medium tracking-wider">ASHUTOSH ROY</p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase text-slate-400">Expires</p>
+                                <p class="font-medium">12/29</p>
+                            </div>
+                            <div class="w-14 h-12 flex items-center justify-center">
+                                <div class="w-12 h-12 rounded-full hologram"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Card Back -->
+                <div class="card-back bg-gradient-to-br from-gray-800 to-black p-2 flex flex-col justify-start shadow-2xl">
+                    <div class="w-full h-14 bg-black mt-6"></div>
+                     <div class="bg-gray-300 mt-4 mx-4 p-2 h-10 flex justify-end items-center rounded-sm">
+                        <div class="bg-white w-full h-full italic text-right pr-4 text-black font-mono text-lg">456</div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-4 px-4">This card is issued by Apex Finance under license. Use of this card constitutes acceptance of the terms and conditions of the Cardholder Agreement.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Card Flip on Click/Tap ---
+            const cardContainers = document.querySelectorAll('.card-container');
+            cardContainers.forEach(container => {
+                container.addEventListener('click', () => {
+                    container.querySelector('.card-inner').classList.toggle('is-flipped');
+                });
+                // Also flip on focus for accessibility
+                container.addEventListener('focus', () => {
+                    container.querySelector('.card-inner').classList.add('is-flipped');
+                });
+                container.addEventListener('blur', () => {
+                     container.querySelector('.card-inner').classList.remove('is-flipped');
+                });
+            });
+
+            // --- Glare Effect on Mouse Move (Desktop only) ---
+            if (!('ontouchstart' in window)) {
+                cardContainers.forEach(container => {
+                    const glare = container.querySelector('.glare');
+                    const cardFront = container.querySelector('.card-front');
+
+                    cardFront.addEventListener('mousemove', (e) => {
+                        const rect = cardFront.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        
+                        glare.style.opacity = '1';
+                        glare.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0) 60%)`;
+                    });
+
+                    cardFront.addEventListener('mouseleave', () => {
+                        glare.style.opacity = '0';
+                    });
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Calverse Track. Transform. Thrive.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <!-- DOMPurify Sanitizer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"></script>
+
+    <!-- Main Styles -->
+    <link rel="stylesheet" href="/styles/dashboard.css">
+</head>
+<body>
+    <div id="loading-spinner" class="fixed inset-0 bg-black z-50 flex items-center justify-center">
+        <svg class="loader-svg" viewBox="0 0 200 200">
+            <circle class="arc arc-outer" cx="100" cy="100" r="80"></circle>
+            <g class="arc-group-inner">
+                <circle class="arc arc-inner" cx="100" cy="100" r="55"></circle>
+            </g>
+        </svg>
+    </div>
+
+    <div id="dashboard-container" class="hidden flex min-h-screen">
+        <aside class="w-64 flex-shrink-0 p-6 flex-col hidden md:flex card border-r border-t-0 border-b-0 border-l-0">
+            <div class="flex-grow">
+                <div class="flex items-center gap-3 mb-10">
+                    <img src="/assets/images/cv.webp" alt="Calverse Logo" class="w-10 h-10 rounded-lg object-contain">
+                    <h1 class="text-2xl font-bold text-main">Calverse</h1>
+                </div>
+                <nav id="main-nav-desktop" class="flex flex-col gap-2">
+                    <a href="#" class="nav-item active" data-section="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                    <a href="#" class="nav-item" data-section="food"><i data-lucide="utensils-crossed"></i><span>Food Planner</span></a>
+                    <a href="#" class="nav-item" data-section="tools"><i data-lucide="wrench"></i><span>Tools</span></a>
+                    <a href="#" class="nav-item" data-section="calculator"><i data-lucide="calculator"></i><span>Calculator</span></a>
+                </nav>
+            </div>
+            <div class="sticky bottom-6">
+                <button id="log-food-btn-desktop" class="btn-primary w-full justify-center">
+                    <i data-lucide="plus" class="mr-2"></i>
+                    <span>Log Food</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="flex-1 flex flex-col">
+            <header class="sticky top-0 z-40 header-glass">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-20">
+                        <h1 id="header-title" class="text-3xl font-bold text-main hidden md:block">Dashboard</h1>
+                         <div class="flex items-center gap-3 md:hidden">
+                            <img src="/assets/images/cv.webp" alt="Calverse Logo" class="w-10 h-10 rounded-lg object-contain">
+                            <h1 class="text-xl font-bold text-main">Calverse</h1>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <button id="calendar-button" class="relative flex items-center justify-center p-2 rounded-full cursor-pointer text-primary hover:bg-zinc-800 transition-colors">
+                                <i data-lucide="calendar" class="w-6 h-6"></i>
+                                <span id="date-display" class="hidden"></span>
+                            </button>
+                            <div class="relative">
+                                <button id="profile-button" class="flex items-center space-x-2">
+                                    <i id="premium-nav-icon" data-lucide="crown" class="w-5 h-5 text-primary hidden"></i>
+                                    <span id="profile-welcome" class="font-semibold text-sub hidden sm:inline">Welcome!</span>
+                                    <div id="user-avatar" class="w-10 h-10 rounded-full bg-primary text-text-on-primary flex items-center justify-center text-xl font-bold border-2 border-primary-hover"></div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="flex-grow p-4 sm:p-6 lg:p-8 pb-28 md:pb-8">
+                <div class="max-w-7xl mx-auto">
+                    
+                    <div id="dashboard-section" class="section-content active relative">
+                        <!-- Welcome and Summary Cards (Visible to all) -->
+                        <div class="flex justify-between items-start mb-8">
+                            <div>
+                                <h2 id="main-welcome-message" class="text-3xl md:text-4xl font-bold text-main">Welcome back!</h2>
+                                <p id="daily-quote" class="text-sub mt-1">"The only bad workout is the one that didn't happen."</p>
+                            </div>
+                            <div class="text-right flex-shrink-0 ml-4 hidden sm:block">
+                                 <p class="text-sub font-semibold">Today's Goal</p>
+                                 <p id="today-goal-highlight" class="text-5xl font-bold" style="color: var(--primary);">0 Kcal</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                            <div id="consumed-calories-card" class="card p-4 flex flex-col gap-2 card-clickable"><div class="flex items-center gap-2 text-sub"><i data-lucide="utensils" class="w-5 h-5 text-blue-400"></i><h3 class="font-semibold">Consumed</h3></div><p id="consumed-calories-summary" class="summary-card-value text-2xl lg:text-3xl font-bold text-main">0 kcal</p></div>
+                            <div class="card p-4 flex flex-col gap-2"><div class="flex items-center gap-2 text-sub"><i data-lucide="target" class="w-5 h-5 text-yellow-400"></i><h3 class="font-semibold">Goal</h3></div><p id="goal-calories-summary" class="summary-card-value text-2xl lg:text-3xl font-bold text-main">0 kcal</p></div>
+                            <div class="card p-4 flex flex-col gap-2"><div class="flex items-center gap-2 text-sub"><i data-lucide="flame" class="w-5 h-5 text-red-400"></i><h3 class="font-semibold">Burned</h3></div><p id="burned-calories-summary" class="summary-card-value text-2xl lg:text-3xl font-bold text-main">0 kcal</p></div>
+                            <div id="net-calories-card" class="card p-4 flex flex-col gap-2"><div class="flex items-center gap-2 text-sub"><i data-lucide="bar-chart-horizontal" class="w-5 h-5 text-green-400"></i><h3 class="font-semibold">Net</h3></div><p id="net-calories-summary" class="summary-card-value text-2xl lg:text-3xl font-bold text-main">0 kcal</p></div>
+                        </div>
+                        
+                        <div id="premium-content-wrapper" class="hidden">
+                            <div class="card p-6 mb-6">
+                                <div id="progress-container">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h3 class="font-bold text-xl">Today's Goal Progress</h3>
+                                        <p id="calorie-summary-text" class="font-semibold text-sub">0 / 2000 kcal</p>
+                                    </div>
+                                    <div class="progress-bar-bg h-3 rounded-full">
+                                        <div id="calorie-progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-2 text-sm text-sub">
+                                        <span id="calorie-progress-percentage">0%</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+                                <div id="goal-completed-container" class="hidden text-center py-2">
+                                    <h4 class="text-lg font-bold text-primary animate-pulse">Today's Calorie Goal Completed!</h4>
+                                    <p class="text-sub text-sm mt-1">Stop eating now.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="card p-6 mb-6">
+                                <h3 class="font-bold text-xl mb-4">Log Burned Calories</h3>
+                                <div class="flex items-center space-x-4">
+                                    <div class="relative flex-grow">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i data-lucide="flame" class="w-5 h-5 text-zinc-500"></i>
+                                        </div>
+                                        <input type="number" id="burned-calories-input" placeholder="Calories burned" class="bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 pl-12 transition">
+                                    </div>
+                                    <button id="log-burned-calories-btn" class="btn-primary flex-shrink-0 h-[46px]">Log</button>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                                <div id="macros-card" class="card p-6 flex flex-col lg:col-span-1">
+                                    <h3 class="font-bold text-xl mb-4 text-center">Macros Breakdown</h3>
+                                    <div class="relative h-48 w-48 mx-auto"><canvas id="macros-chart"></canvas></div>
+                                    <div id="macros-legend" class="mt-6 space-y-3"></div>
+                                </div>
+                                <div class="card p-4 md:p-6 flex flex-col lg:col-span-2" style="background-color: rgba(59, 130, 246, 0.1);">
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                                        <div class="mb-4 sm:mb-0">
+                                            <h3 class="font-bold text-xl">Hydration</h3>
+                                            <div class="text-sm text-sub">
+                                                <span id="hydration-total-intake">Total: 0.0L</span>
+                                                <span id="hydration-goal" class="ml-2">Goal: 2.0L</span>
+                                            </div>
+                                        </div>
+                                        <div id="hydration-chart-tabs" class="flex items-center space-x-1 sm:space-x-2 bg-blue-900/50 p-1 rounded-md">
+                                            <button class="tab-button text-xs sm:text-sm px-2 py-1 rounded" data-range="all">All</button>
+                                            <button class="tab-button text-xs sm:text-sm px-2 py-1 rounded" data-range="month">Month</button>
+                                            <button class="tab-button text-xs sm:text-sm px-2 py-1 rounded" data-range="week">Week</button>
+                                            <button class="tab-button text-xs sm:text-sm px-2 py-1 rounded active" data-range="day">Day</button>
+                                        </div>
+                                    </div>
+                                    <div class="relative flex-grow h-52 w-full">
+                                        <canvas id="hydration-chart"></canvas>
+                                        <div id="hydration-no-data" class="absolute inset-0 flex items-center justify-center hidden">
+                                            <p class="text-sub">Not enough data for this period. Keep logging!</p>
+                                        </div>
+                                    </div>
+                                     <div class="flex items-center justify-center gap-6 mt-4">
+                                        <button id="remove-glass-btn" class="p-2 rounded-full bg-border-color-dark hover:bg-primary/20"><i data-lucide="minus"></i></button>
+                                        <div class="flex items-center gap-2 text-lg"><i data-lucide="glass-water"></i><span id="water-glass-count">0 glasses</span></div>
+                                         <button id="add-glass-btn" class="p-2 rounded-full bg-border-color-dark hover:bg-primary/20"><i data-lucide="plus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-6 mb-6">
+                                <div id="weight-data-card" class="card p-4 md:p-6 flex flex-col">
+                                    <div id="weight-chart-container" class="hidden">
+                                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                                            <div class="mb-4 sm:mb-0">
+                                                <h3 class="font-bold text-xl text-main">Weight Data</h3>
+                                                <div class="text-sm text-sub"><span id="current-weight-display">Current: -- kg</span></div>
+                                            </div>
+                                            <div id="weight-chart-tabs" class="flex items-center space-x-1 sm:space-x-2 bg-zinc-800 p-1 rounded-md">
+                                                <button class="tab-button text-xs sm:text-sm px-2 py-1 rounded" data-range="all">All</button>
+                                                <button class="tab-button text-xs sm:text-sm px-2 py-1 rounded" data-range="month">Month</button>
+                                                <button class="tab-button text-xs sm:text-sm px-2 py-1 rounded active" data-range="week">Week</button>
+                                            </div>
+                                        </div>
+                                        <div class="relative flex-grow h-52 w-full">
+                                            <canvas id="main-weight-chart"></canvas>
+                                            <div id="weight-no-data" class="absolute inset-0 flex items-center justify-center hidden"><p class="text-sub">Log daily to see graph.</p></div>
+                                        </div>
+                                    </div>
+                                     <div id="weight-log-form-container" class="mt-4">
+                                         <div class="flex items-center space-x-4">
+                                            <input type="number" id="weight-input" placeholder="Log today's weight (kg)" class="w-full">
+                                            <button id="log-weight-btn" class="btn-primary flex-shrink-0">Log</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="premium-lock-overlay" class="absolute inset-x-0 top-0 bottom-0 bg-black/80 backdrop-blur-md flex-col items-center justify-start pt-24 rounded-lg z-20 hidden">
+                            <div class="text-center p-8">
+                                <i data-lucide="lock" class="w-16 h-16 text-primary mx-auto mb-4"></i>
+                                <h3 class="text-2xl font-bold text-white mb-2">Unlock Your Full Potential</h3>
+                                <p class="text-zinc-400 mb-6 max-w-sm mx-auto">Upgrade to Premium to access detailed analytics, charts, and progress tracking.</p>
+                                <a href="/payment.html" class="btn-primary"><i data-lucide="gem" class="mr-2"></i><span>Upgrade Now</span></a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Food Planner Section -->
+                    <div id="food-section" class="section-content card p-4 sm:p-6">
+                        <div id="food-planner-selector" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                            <!-- Nutrition Lookup Card -->
+                            <div class="planner-card backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-lg hover:bg-white/20 transition cursor-pointer active" data-tab="nutrition-lookup">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-primary/10 p-3 rounded-lg"><i data-lucide="utensils-crossed" class="w-6 h-6 text-primary"></i></div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-white">Nutrition Lookup</h3>
+                                        <p class="text-sub text-sm">Analyze and log individual food items.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Health Analyzer Card -->
+                            <div class="planner-card backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-lg hover:bg-white/20 transition cursor-pointer" data-tab="health-analyzer">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-primary/10 p-3 rounded-lg"><i data-lucide="scan-line" class="w-6 h-6 text-primary"></i></div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-white">Health Label Analyzer</h3>
+                                        <p class="text-sub text-sm">Scan food labels for a health score.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="nutrition-lookup-tab" class="tab-content active">
+                            <h2 class="text-2xl font-bold text-main mb-6">Nutrition Lookup</h2>
+                            <div class="flex flex-col sm:flex-row items-stretch gap-4">
+                                <div class="w-full sm:flex-1">
+                                    <label for="nutrition-search-input" class="block text-sm font-medium text-sub mb-2">Food Item</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="search" class="w-5 h-5 text-zinc-500"></i></div>
+                                        <input type="text" id="nutrition-search-input" placeholder="e.g., 'chicken breast'" class="bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 pl-12 transition">
+                                    </div>
+                                </div>
+                                <div class="w-full sm:w-40">
+                                    <label for="nutrition-quantity-before-search" class="block text-sm font-medium text-sub mb-2">Quantity</label>
+                                    <div class="relative">
+                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="weight" class="w-5 h-5 text-zinc-500"></i></div>
+                                        <input type="number" id="nutrition-quantity-before-search" value="100" min="1" max="10000" class="bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 pl-12 transition">
+                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span class="text-zinc-500 sm:text-sm">g</span></div>
+                                    </div>
+                                </div>
+                                <div class="w-full sm:w-auto flex items-end">
+                                   <button id="nutrition-search-btn" class="btn-primary w-full sm:w-auto h-[46px]">Search</button>
+                                </div>
+                            </div>
+                            <div id="nutrition-results" class="space-y-4 mt-6"></div>
+                        </div>
+
+                        <!-- Tab Content for Health Label Analyzer -->
+                        <div id="health-analyzer-tab" class="tab-content">
+                            <h2 class="text-2xl font-bold text-main mb-6">Health Label Analyzer</h2>
+                            <p class="text-sub mb-6 text-center">Get a professional health grade for your food by scanning the label.</p>
+                            <div id="la-uploader">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <button id="la-camera-button" class="btn-primary w-full h-[46px] justify-center space-x-2">
+                                        <i data-lucide="camera"></i><span>Capture with Camera</span>
+                                    </button>
+                                    <!-- FIXED: Upload button styling -->
+                                    <button id="la-upload-button" class="btn-secondary w-full h-[46px] space-x-2">
+                                        <i data-lucide="upload"></i><span>Upload Image</span>
+                                    </button>
+                                </div>
+                                <input type="file" id="la-fileInput" class="hidden" accept="image/*">
+                                <p class="text-center text-sub mt-4 text-sm">You can also drag & drop or paste an image.</p>
+                            </div>
+                            <div id="la-imagePreviewContainer" class="mt-4 hidden text-center relative rounded-lg">
+                                <img id="la-imagePreview" class="rounded-lg shadow-md" alt="Image Preview">
+                                <button id="la-analyzeButton"    class="mt-4 btn-primary">Analyze Label</button>
+                            </div>
+
+                            <div id="la-loader" class="mt-8 hidden space-y-4">
+                                <div class="flex justify-center items-center flex-col space-y-3"><div class="skeleton-box w-20 h-20 rounded-full"></div><div class="skeleton-box w-32 h-8"></div><div class="skeleton-box w-48 h-6"></div></div>
+                                <div class="space-y-3 pt-6"><div class="skeleton-box w-full h-16"></div><div class="skeleton-box w-full h-16"></div><div class="skeleton-box w-full h-16"></div></div>
+                            </div>
+
+                            <div id="la-results" class="mt-8 result-card">
+                                <div id="la-score-summary" class="text-center"></div>
+                                <div id="la-score-breakdown" class="mt-6 space-y-3"></div>
+                                
+                                <div id="la-chat-explainer" class="mt-8 pt-6 border-t border-border-color-dark hidden">
+                                     <h3 class="text-xl font-bold text-main text-center">Personalized Advice</h3>
+                                     <p class="text-center text-sub text-sm mt-1">Get advice from Dr. Calverse based on your health profile.</p>
+                                     <div class="text-center mt-4">
+                                        <button id="la-ask-why-button" class="btn-primary">
+                                            <i data-lucide="user-check" class="mr-2"></i>
+                                            <span>Get My Personal Advice</span>
+                                        </button>
+                                     </div>
+                                     <div id="la-chat-response-container" class="mt-6 p-4 card bg-background-dark hidden">
+                                        <div id="la-chat-response" class="text-sub text-sm space-y-2 leading-relaxed"></div>
+                                     </div>
+                                </div>
+                                
+                                <div class="text-center mt-8 hidden md:block">
+                                    <button id="la-resetButton" class="btn-secondary">Analyze Another Label</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+                    <div id="tools-section" class="section-content card p-4 sm:p-6">
+                        <div id="tools-selector" class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                            <!-- Recipe Generator Card -->
+                            <div class="planner-card backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-lg hover:bg-white/20 transition cursor-pointer active" data-tab="recipe-generator">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-primary/10 p-3 rounded-lg"><i data-lucide="chef-hat" class="w-6 h-6 text-primary"></i></div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-white">Recipe Generator</h3>
+                                        <p class="text-sub text-sm">Create meals from your ingredients.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cravings Solver Card -->
+                            <div class="planner-card backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-lg hover:bg-white/20 transition cursor-pointer" data-tab="cravings-solver">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-primary/10 p-3 rounded-lg"><i data-lucide="lightbulb" class="w-6 h-6 text-primary"></i></div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-white">Cravings Solver</h3>
+                                        <p class="text-sub text-sm">Find healthy alternatives for cravings.</p>
+                                    </div>
+                                </div>
+                            </div>
+                             <!-- NEW: Recipe Makeover Card -->
+                            <div class="planner-card backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-lg hover:bg-white/20 transition cursor-pointer" data-tab="recipe-makeover">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-primary/10 p-3 rounded-lg"><i data-lucide="repeat" class="w-6 h-6 text-primary"></i></div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-white">Recipe Makeover</h3>
+                                        <p class="text-sub text-sm">Get healthier ingredient swaps.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="recipe-generator-tab" class="tab-content active">
+                            <h3 class="text-2xl font-bold text-main mb-6">Recipe Generator</h3>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                    <textarea id="recipe-ingredients-input" placeholder="Enter ingredients, separated by commas (e.g., chicken, rice, broccoli)" rows="3" class="bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 transition"></textarea>
+                                </div>
+                                <div class="flex space-x-4">
+                                    <button id="find-recipes-btn" class="btn-primary h-[46px]">Find Recipes</button>
+                                    <button id="clear-recipes-btn" class="btn-secondary h-[46px]">Clear</button>
+                                </div>
+                                <div id="recipe-results" class="space-y-4 mt-6"></div>
+                            </div>
+                        </div>
+
+                        <div id="cravings-solver-tab" class="tab-content">
+                             <h3 class="text-2xl font-bold text-main mb-6">Cravings Solver</h3>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="cookie" class="w-5 h-5 text-zinc-500"></i></div>
+                                    <input type="text" id="craving-input" placeholder="What are you craving? (e.g., chocolate cake)" class="bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 pl-12 transition">
+                                </div>
+                                <div class="flex space-x-4">
+                                    <button id="solve-craving-btn" class="btn-primary h-[46px] flex-grow">Find Alternatives</button>
+                                    <button id="clear-craving-btn" class="btn-secondary h-[46px]">Clear</button>
+                                </div>
+                                <div id="craving-results" class="space-y-4 mt-6"></div>
+                            </div>
+                        </div>
+
+                        <div id="recipe-makeover-tab" class="tab-content">
+                             <h3 class="text-2xl font-bold text-main mb-6">Healthy Recipe Makeover</h3>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                     <textarea id="makeover-input" placeholder="Paste your recipe or list of ingredients here..." rows="4" class="bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 transition"></textarea>
+                                </div>
+                                <div class="flex space-x-4">
+                                    <button id="makeover-btn" class="btn-primary h-[46px] flex-grow">Get Makeover</button>
+                                    <button id="clear-makeover-btn" class="btn-secondary h-[46px]">Clear</button>
+                                </div>
+                                <div id="makeover-results" class="mt-6"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="calculator-section" class="section-content">
+                        <div class="max-w-2xl mx-auto">
+                            <div class="text-center mb-8">
+                                <h2 class="text-3xl md:text-4xl font-bold text-main">Health Calculators</h2>
+                                <p class="text-sub mt-1">A suite of tools to help you track your health metrics.</p>
+                            </div>
+                            <div id="health-calculators-container" class="space-y-3">
+                                <div class="accordion-item card overflow-hidden">
+                                    <div class="accordion-header"><div class="flex items-center gap-3"><i data-lucide="ruler"></i><span>BMI</span></div><i data-lucide="chevron-down" class="accordion-icon"></i></div>
+                                    <div class="accordion-content">
+                                        <form id="bmi-form" class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label for="bmi-weight" class="block text-sm font-medium text-sub mb-2">Weight (kg)</label>
+                                                    <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="weight" class="w-5 h-5 text-zinc-500"></i></div><input type="number" step="any" id="bmi-weight" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div>
+                                                </div>
+                                                <div>
+                                                    <label for="bmi-height" class="block text-sm font-medium text-sub mb-2">Height (cm)</label>
+                                                    <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="move-vertical" class="w-5 h-5 text-zinc-500"></i></div><input type="number" id="bmi-height" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn-primary w-full h-[46px]">Calculate BMI</button>
+                                            <div id="bmi-result" class="calc-result hidden"></div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item card overflow-hidden">
+                                    <div class="accordion-header"><div class="flex items-center gap-3"><i data-lucide="flame"></i><span>BMR</span></div><i data-lucide="chevron-down" class="accordion-icon"></i></div>
+                                    <div class="accordion-content">
+                                        <form id="bmr-form" class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label for="bmr-weight" class="block text-sm font-medium text-sub mb-2">Weight (kg)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="weight" class="w-5 h-5 text-zinc-500"></i></div><input type="number" step="any" id="bmr-weight" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div></div>
+                                                <div><label for="bmr-height" class="block text-sm font-medium text-sub mb-2">Height (cm)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="move-vertical" class="w-5 h-5 text-zinc-500"></i></div><input type="number" id="bmr-height" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div></div>
+                                                <div><label for="bmr-age" class="block text-sm font-medium text-sub mb-2">Age</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="cake-slice" class="w-5 h-5 text-zinc-500"></i></div><input type="number" id="bmr-age" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div></div>
+                                                <div><label for="bmr-gender" class="block text-sm font-medium text-sub mb-2">Gender</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="users" class="w-5 h-5 text-zinc-500"></i></div><select id="bmr-gender" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg"><option value="male">Male</option><option value="female">Female</option></select><div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i data-lucide="chevron-down" class="w-5 h-5 text-zinc-500"></i></div></div></div>
+                                            </div>
+                                            <button type="submit" class="btn-primary w-full h-[46px]">Calculate BMR</button>
+                                            <div id="bmr-result" class="calc-result hidden"></div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item card overflow-hidden">
+                                    <div class="accordion-header"><div class="flex items-center gap-3"><i data-lucide="percent"></i><span>Body Fat</span></div><i data-lucide="chevron-down" class="accordion-icon"></i></div>
+                                    <div class="accordion-content">
+                                        <form id="bodyfat-form" class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label for="bf-gender" class="block text-sm font-medium text-sub mb-2">Gender</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="users" class="w-5 h-5 text-zinc-500"></i></div><select id="bf-gender" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg"><option value="male">Male</option><option value="female">Female</option></select><div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i data-lucide="chevron-down" class="w-5 h-5 text-zinc-500"></i></div></div></div>
+                                                <div><label for="bf-height" class="block text-sm font-medium text-sub mb-2">Height (cm)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="move-vertical" class="w-5 h-5 text-zinc-500"></i></div><input type="number" id="bf-height" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div></div>
+                                                <div><label for="bf-waist" class="block text-sm font-medium text-sub mb-2">Waist (cm)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="git-commit-vertical" class="w-5 h-5 text-zinc-500 -rotate-45"></i></div><input type="number" id="bf-waist" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div></div>
+                                                <div><label for="bf-neck" class="block text-sm font-medium text-sub mb-2">Neck (cm)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="git-commit-vertical" class="w-5 h-5 text-zinc-500 -rotate-45"></i></div><input type="number" id="bf-neck" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required></div></div>
+                                                <div id="bf-hip-container" class="hidden"><label for="bf-hip" class="block text-sm font-medium text-sub mb-2">Hip (cm)</label><div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="git-commit-vertical" class="w-5 h-5 text-zinc-500 -rotate-45"></i></div><input type="number" id="bf-hip" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg"></div></div>
+                                            </div>
+                                            <button type="submit" class="btn-primary w-full h-[46px]">Calculate Body Fat</button>
+                                            <div id="bodyfat-result" class="calc-result hidden"></div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item card overflow-hidden">
+                                    <div class="accordion-header"><div class="flex items-center gap-3"><i data-lucide="activity"></i><span>Maintenance Calories</span></div><i data-lucide="chevron-down" class="accordion-icon"></i></div>
+                                    <div class="accordion-content">
+                                        <p class="text-sub text-sm mb-4">First, calculate your BMR, then use that value here.</p>
+                                        <form id="maint-cals-form" class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label for="mc-bmr" class="block text-sm font-medium text-sub mb-2">Your BMR</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="flame" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <input type="number" id="mc-bmr" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required placeholder="From BMR calculator">
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label for="mc-activity" class="block text-sm font-medium text-sub mb-2">Activity Level</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="trending-up" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <select id="mc-activity" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg">
+                                                            <option value="1.2">Sedentary</option>
+                                                            <option value="1.375">Lightly Active</option>
+                                                            <option value="1.55">Moderately Active</option>
+                                                            <option value="1.725">Very Active</option>
+                                                            <option value="1.9">Extra Active</option>
+                                                        </select>
+                                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i data-lucide="chevron-down" class="w-5 h-5 text-zinc-500"></i></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn-primary w-full h-[46px]">Calculate Calories</button>
+                                            <div id="maint-cals-result" class="calc-result hidden"></div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item card overflow-hidden">
+                                    <div class="accordion-header"><div class="flex items-center gap-3"><i data-lucide="beef"></i><span>Protein Intake</span></div><i data-lucide="chevron-down" class="accordion-icon"></i></div>
+                                    <div class="accordion-content">
+                                        <form id="protein-form" class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label for="protein-weight" class="block text-sm font-medium text-sub mb-2">Weight (kg)</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="weight" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <input type="number" step="any" id="protein-weight" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label for="protein-goal" class="block text-sm font-medium text-sub mb-2">Goal</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="target" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <select id="protein-goal" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg">
+                                                            <option value="0.8">Maintenance (Sedentary)</option>
+                                                            <option value="1.4">Maintenance (Active)</option>
+                                                            <option value="1.8">Muscle Gain</option>
+                                                        </select>
+                                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i data-lucide="chevron-down" class="w-5 h-5 text-zinc-500"></i></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn-primary w-full h-[46px]">Calculate Protein</button>
+                                            <div id="protein-result" class="calc-result hidden"></div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <!-- Creatine Calculator -->
+                                <div class="accordion-item card overflow-hidden">
+                                    <div class="accordion-header">
+                                        <div class="flex items-center gap-3"><i data-lucide="dumbbell"></i><span>Creatine Intake</span></div>
+                                        <i data-lucide="chevron-down" class="accordion-icon"></i>
+                                    </div>
+                                    <div class="accordion-content">
+                                        <form id="creatine-form" class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label for="creatine-weight" class="block text-sm font-medium text-sub mb-2">Weight (kg)</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="weight" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <input type="number" id="creatine-weight" step="any" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required placeholder="e.g., 70.5">
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label for="creatine-age" class="block text-sm font-medium text-sub mb-2">Age</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="cake-slice" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <input type="number" id="creatine-age" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label for="creatine-gender" class="block text-sm font-medium text-sub mb-2">Gender</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="users" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <select id="creatine-gender" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg">
+                                                            <option value="male">Male</option>
+                                                            <option value="female">Female</option>
+                                                        </select>
+                                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i data-lucide="chevron-down" class="w-5 h-5 text-zinc-500"></i></div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label for="creatine-activity" class="block text-sm font-medium text-sub mb-2">Activity Level</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="trending-up" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <select id="creatine-activity" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg">
+                                                            <option value="sedentary">Sedentary</option>
+                                                            <option value="light">Lightly Active</option>
+                                                            <option value="moderate">Moderately Active</option>
+                                                            <option value="active">Very Active</option>
+                                                        </select>
+                                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i data-lucide="chevron-down" class="w-5 h-5 text-zinc-500"></i></div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-span-2">
+                                                    <label for="creatine-phase" class="block text-sm font-medium text-sub mb-2">Supplementation Phase</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="loader-2" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <select id="creatine-phase" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg">
+                                                            <option value="loading">Loading Phase</option>
+                                                            <option value="maintenance">Maintenance Phase</option>
+                                                        </select>
+                                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i data-lucide="chevron-down" class="w-5 h-5 text-zinc-500"></i></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn-primary w-full h-[46px]">Calculate Creatine</button>
+                                            <div id="creatine-result" class="calc-result hidden"></div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item card overflow-hidden">
+                                    <div class="accordion-header"><div class="flex items-center gap-3"><i data-lucide="calendar-heart"></i><span>Period & Ovulation</span></div><i data-lucide="chevron-down" class="accordion-icon"></i></div>
+                                    <div class="accordion-content">
+                                        <form id="period-form" class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label for="period-last-date" class="block text-sm font-medium text-sub mb-2">Last Period Start Date</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="calendar" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <input type="date" id="period-last-date" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" required>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label for="period-cycle-length" class="block text-sm font-medium text-sub mb-2">Avg. Cycle Length</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i data-lucide="repeat" class="w-5 h-5 text-zinc-500"></i></div>
+                                                        <input type="number" id="period-cycle-length" class="bg-zinc-900 border-zinc-700 w-full p-3 pl-12 rounded-lg" value="28" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn-primary w-full h-[46px]">Calculate Cycle</button>
+                                            <div id="period-result" class="calc-result hidden"></div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+                <!-- Floating Buttons -->
+                <button id="present-day-btn" class="fixed bottom-24 md:bottom-8 right-8 z-30 btn-primary hidden flex items-center gap-2" title="Go to Today">
+                    <i data-lucide="calendar-check-2" class="w-5 h-5"></i>
+                    <span class="hidden sm:inline">Today</span>
+                </button>
+                <!-- NEW: Floating Clear Button for Analyzer -->
+                <button id="la-clear-fab" class="btn-primary !p-3 !rounded-full" title="Clear Search">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+
+    
+    <footer class="fixed bottom-0 left-0 right-0 md:hidden z-10 p-4">
+        <!-- NAVBAR FIX: Corrected alignment and spacing -->
+        <div class="card max-w-md mx-auto rounded-full shadow-lg border-0 flex justify-around items-center h-16" style="background-color: #1C1C1E;">
+            <a href="#" class="nav-item-mobile active flex flex-col items-center justify-center gap-1 flex-1" data-section="dashboard"><i data-lucide="layout-grid"></i><span class="text-xs">Home</span></a>
+            <a href="#" class="nav-item-mobile flex flex-col items-center justify-center gap-1 flex-1" data-section="food"><i data-lucide="utensils-crossed"></i><span class="text-xs">Food</span></a>
+            <div class="flex-shrink-0 flex justify-center items-center w-16">
+                 <button id="log-food-btn-mobile" class="absolute z-20 text-black rounded-full h-16 w-16 flex items-center justify-center shadow-lg" style="bottom: 1.5rem; background-color: var(--primary); box-shadow: 0 0 20px 5px rgba(250, 204, 21, 0.4);">
+                    <i data-lucide="plus" class="h-8 w-8" stroke-width="3"></i>
+                </button>
+            </div>
+            <a href="#" class="nav-item-mobile flex flex-col items-center justify-center gap-1 flex-1" data-section="tools"><i data-lucide="wrench"></i><span class="text-xs">Tools</span></a>
+            <a href="#" class="nav-item-mobile flex flex-col items-center justify-center gap-1 flex-1" data-section="calculator"><i data-lucide="calculator"></i><span class="text-xs">Calculator</span></a>
+        </div>
+    </footer>
+
+    <div id="profile-modal" class="fixed inset-0 z-50 flex justify-end modal-backdrop hidden">
+        <div class="modal-content card bg-background-dark p-6 sm:p-8 flex flex-col overflow-y-auto">
+            <div class="flex justify-between items-center mb-8 flex-shrink-0">
+                <h2 class="text-2xl font-bold text-main">Profile & Settings</h2>
+                <button id="close-profile-modal-btn" class="text-sub hover:text-main text-3xl">&times;</button>
+            </div>
+            <div class="text-center mb-8 flex-shrink-0">
+                <div class="relative inline-block">
+                    <div id="profile-modal-avatar" class="w-24 h-24 rounded-full bg-primary text-text-on-primary flex items-center justify-center text-4xl font-bold border-4 border-primary-hover mx-auto"></div>
+                    <div id="profile-crown-icon" class="absolute -top-2 -right-2 bg-background-dark p-1 rounded-full hidden"><i data-lucide="crown" class="w-6 h-6 text-primary"></i></div>
+                </div>
+                <div class="flex items-center justify-center mt-4">
+                    <h3 id="profile-modal-name" class="text-2xl font-bold"></h3>
+                    <button id="edit-name-btn" class="ml-2 text-sub hover:text-primary"><i data-lucide="pencil" class="w-5 h-5"></i></button>
+                </div>
+                <p id="profile-modal-email" class="text-sub mt-1"></p>
+            </div>
+            <div class="flex-grow">
+                <div class="space-y-8">
+                     <div class="space-y-2">
+                        <h4 class="profile-section-title">Preferences</h4>
+                        <button type="button" id="preferences-btn" class="info-link w-full"><span>Your Preferences</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></button>
+                        <div id="preferences-inputs" class="hidden space-y-4 pt-4">
+                            <form id="settings-form">
+                                <div><label for="name-input" class="block text-sm font-medium text-sub mb-1">Your Name</label><input type="text" id="name-input" required class="w-full"></div>
+                                <div><label for="calorie-goal-input" class="block text-sm font-medium text-sub mb-1">Daily Calorie Goal (kcal)</label><input type="number" id="calorie-goal-input" required class="w-full"></div>
+                                <div><label for="water-goal-input" class="block text-sm font-medium text-sub mb-1">Daily Water Goal (Liters)</label><input type="number" step="0.1" id="water-goal-input" required class="w-full"></div>
+                                <div><label for="glass-size-input" class="block text-sm font-medium text-sub mb-1">Default Glass Size (ml)</label><input type="number" id="glass-size-input" required class="w-full"></div>
+                                <button type="submit" id="save-changes-btn" class="w-full mt-2 btn-primary">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- NEW: Health Profile Section -->
+                    <div class="space-y-2">
+                        <h4 class="profile-section-title">Health Profile</h4>
+                        <button type="button" id="health-profile-btn" class="info-link w-full"><span>Your Health Profile</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></button>
+                        <div id="health-profile-inputs" class="hidden space-y-4 pt-4">
+                            <form id="health-profile-form">
+                                <div><label for="age-input" class="block text-sm font-medium text-sub mb-1">Age</label><input type="number" id="age-input" class="w-full"></div>
+                                <div><label for="height-input" class="block text-sm font-medium text-sub mb-1">Height (cm)</label><input type="number" id="height-input" class="w-full"></div>
+                                <div>
+                                    <label for="activity-level-select" class="block text-sm font-medium text-sub mb-1">Activity Level</label>
+                                    <select id="activity-level-select" class="w-full">
+                                        <option value="sedentary">Sedentary (little or no exercise)</option>
+                                        <option value="lightly_active">Lightly Active (light exercise/sports 1-3 days/week)</option>
+                                        <option value="moderately_active">Moderately Active (moderate exercise/sports 3-5 days/week)</option>
+                                        <option value="very_active">Very Active (hard exercise/sports 6-7 days a week)</option>
+                                        <option value="extra_active">Extra Active (very hard exercise/physical job)</option>
+                                    </select>
+                                </div>
+                                <button type="submit" id="save-health-profile-btn" class="w-full mt-2 btn-primary">Save Health Info</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <h4 class="profile-section-title">Account</h4>
+                        <button type="button" id="premium-btn" class="info-link w-full"><div class="flex items-center gap-3"><i data-lucide="gem" class="text-primary"></i><span>Premium Status</span></div><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></button>
+                        <div id="premium-details" class="hidden space-y-4 pt-4 border-t border-zinc-700 mt-2">
+                            <div class="text-center p-4 rounded-lg bg-zinc-800">
+                                <p class="font-semibold">Current Plan: <span id="premium-plan-name" class="text-primary"></span></p>
+                                <p class="text-sm text-sub">Status: <span id="premium-expiry-date"></span></p>
+                            </div>
+                            <a id="premium-action-btn" href="/payment.html" class="w-full btn-primary no-underline text-center"></a>
+                        </div>
+                        <button id="reset-password-btn" class="info-link w-full"><div class="flex items-center gap-3"><i data-lucide="key-round"></i><span>Change Password</span></div></button>
+                        <button id="logout-btn" class="info-link w-full"><div class="flex items-center gap-3"><i data-lucide="log-out"></i><span>Logout</span></div></button>
+                    </div>
+                    <div class="space-y-2">
+                        <h4 class="profile-section-title">Information</h4>
+                        <a href="/about.html" class="info-link"><span>About Us</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></a>
+                        <a href="/contact.html" class="info-link"><span>Contact Us</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></a>
+                        <a href="/faq.html" class="info-link"><span>FAQ</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></a>
+                        <a href="/terms.html" class="info-link"><span>Terms and Conditions</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></a>
+                        <a href="/privacy.html" class="info-link"><span>Privacy Policy</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></a>
+                        <a href="/refund.html" class="info-link"><span>Payments and Refund Policy</span><i data-lucide="chevron-right" class="w-5 h-5 text-sub"></i></a>
+                    </div>
+                </div>
+            </div>
+            <footer class="mt-8 text-center text-sm text-sub flex-shrink-0">
+                <p class="mb-2">Made with ❤️ by Ashutosh Roy</p>
+                <p>Version 2.1</p>
+            </footer>
+        </div>
+    </div>
+    <div id="food-log-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden"><div class="card p-8 rounded-xl shadow-2xl m-4 w-full max-w-lg"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-main">Food Log Details</h2><button id="close-food-log-modal-btn" class="text-sub hover:text-main text-3xl">&times;</button></div><div id="food-log-modal-list" class="space-y-2 max-h-96 overflow-y-auto"></div></div></div>
+    <div id="food-logging-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+        <div class="card p-8 rounded-xl shadow-2xl m-4 w-full max-w-lg">
+            <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-main">Log Food Item</h2><button id="close-food-logging-modal-btn" class="text-sub hover:text-main text-3xl">&times;</button></div>
+            <form id="food-log-form" class="space-y-4">
+                <div><label for="food-item-input" class="block text-sm font-medium text-sub">Food Item</label><input type="text" id="food-item-input" placeholder="e.g., '1 cup of cooked rice'" required class="mt-1 w-full"></div>
+                <div><label for="meal-type-select" class="block text-sm font-medium text-sub">Meal</label><select id="meal-type-select" class="mt-1 w-full"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snacks</option></select></div>
+                <button type="submit" id="log-food-btn" class="btn-primary w-full h-11">Analyze & Log</button>
+            </form>
+            <div id="food-log-error" class="hidden mt-4 p-3 rounded-lg bg-red-900/50 text-red-300 text-sm"></div>
+        </div>
+    </div>
+    <div id="calendar-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+        <div class="card p-6 rounded-xl shadow-2xl m-4 w-full max-w-sm">
+            <div class="flex justify-between items-center mb-4">
+                <button id="prev-month-btn" class="p-2 rounded-full hover:bg-border-color-dark"><i data-lucide="chevron-left"></i></button>
+                <h2 id="month-year-display" class="font-bold text-lg"></h2>
+                <button id="next-month-btn" class="p-2 rounded-full hover:bg-border-color-dark"><i data-lucide="chevron-right"></i></button>
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center text-sub text-sm mb-2"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center"></div>
+        </div>
+    </div>
+
+    <div id="la-additive-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-black opacity-75" onclick="closeModal()"></div>
+        <div class="modal-content card w-11/12 md:max-w-md mx-auto rounded-lg shadow-lg z-50 overflow-y-auto">
+            <div class="py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="la-modal-title" class="text-2xl font-bold"></p>
+                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()"><i data-lucide="x"></i></div>
+                </div>
+                <div id="la-modal-body" class="my-5 text-sub"><div class="loader mx-auto"></div></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="la-camera-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden bg-black bg-opacity-75 z-50">
+        <div class="card w-full max-w-lg mx-auto rounded-lg shadow-lg z-50 p-4 flex flex-col relative">
+            <div class="relative" id="la-camera-wrapper">
+                <video id="la-camera-view" autoplay playsinline></video>
+                <canvas id="la-camera-canvas" class="hidden"></canvas>
+            </div>
+            <div id="la-camera-controls" class="mt-4 flex justify-around items-center">
+                <button id="la-cancel-camera" class="p-3 bg-gray-700 text-white font-semibold rounded-full" onclick="closeCamera()"><i data-lucide="x"></i></button>
+                <button id="la-capture-button" class="p-4 bg-primary text-text-on-primary font-bold rounded-full shadow-lg ring-4 ring-white ring-opacity-50"><i data-lucide="camera"></i></button>
+                <button id="la-flash-button" class="p-3 bg-gray-700 text-white font-semibold rounded-full"><i data-lucide="zap-off"></i></button>
+            </div>
+             <div id="la-recapture-controls" class="mt-4 flex justify-around items-center hidden">
+                <button id="la-recapture-button" class="btn-secondary">Recapture</button>
+                <button id="la-use-photo-button" class="btn-primary">Use Photo</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="popup-notification" class="fixed top-8 left-1/2 -translate-x-1/2 p-4 rounded-lg text-white shadow-lg opacity-0 -translate-y-4 pointer-events-none"><p></p></div>
+
+  <script type="module" src="/scripts/firebase-init.js"></script>
+    
+    <script type="module" src="/scripts/dashboard.js"></script>
+    <script type="module" src="/scripts/food.js"></script>
+    <script type="module" src="/scripts/analyzer.js"></script>
+    <script type="module" src="/scripts/tools.js"></script>
+    <script type="module" src="/scripts/calculator.js"></script>
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons(); 
+
+            const navLinksDesktop = document.querySelectorAll('#main-nav-desktop .nav-item');
+            const navLinksMobile = document.querySelectorAll('footer .nav-item-mobile');
+            const sections = document.querySelectorAll('.section-content');
+            const headerTitle = document.getElementById('header-title');
+            
+            const setActiveNav = (sectionId) => {
+                navLinksDesktop.forEach(link => link.classList.toggle('active', link.dataset.section === sectionId));
+                navLinksMobile.forEach(link => link.classList.toggle('active', link.dataset.section === sectionId));
+                sections.forEach(content => content.classList.toggle('active', content.id === `${sectionId}-section`));
+                if (headerTitle) {
+                    const activeLink = document.querySelector(`.nav-item[data-section="${sectionId}"] span`);
+                    headerTitle.textContent = activeLink ? activeLink.textContent : 'Dashboard';
+                }
+            };
+
+            const allNavLinks = [...navLinksDesktop, ...navLinksMobile];
+            allNavLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sectionId = e.currentTarget.dataset.section;
+                    if (sectionId) setActiveNav(sectionId);
+                });
+            });
+
+            // --- Logic for Food Planner Tab-like Cards ---
+            const foodPlannerSelector = document.getElementById('food-planner-selector');
+            if (foodPlannerSelector) {
+                const selectionCards = foodPlannerSelector.querySelectorAll('.planner-card');
+                const foodTabContents = document.querySelectorAll('#food-section .tab-content');
+
+                selectionCards.forEach(card => {
+                    card.addEventListener('click', () => {
+                        selectionCards.forEach(c => c.classList.remove('active'));
+                        card.classList.add('active');
+                        const tabId = card.dataset.tab;
+                        foodTabContents.forEach(content => {
+                            content.classList.toggle('active', content.id === `${tabId}-tab`);
+                        });
+                    });
+                });
+            }
+
+            // --- UPDATED: Tab switching logic for Tools section (card-based) ---
+            const toolsSelector = document.getElementById('tools-selector');
+            if (toolsSelector) {
+                const selectionCards = toolsSelector.querySelectorAll('.planner-card');
+                const toolTabContents = document.querySelectorAll('#tools-section .tab-content');
+
+                selectionCards.forEach(card => {
+                    card.addEventListener('click', () => {
+                        selectionCards.forEach(c => c.classList.remove('active'));
+                        card.classList.add('active');
+                        const tabId = card.dataset.tab;
+                        toolTabContents.forEach(content => {
+                            content.classList.toggle('active', content.id === `${tabId}-tab`);
+                        });
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>
