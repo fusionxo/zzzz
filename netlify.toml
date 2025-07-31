@@ -1,9 +1,9 @@
-# Netlify configuration file
+# Netlify configuration file for a flattened structure
 
 [build]
-  # CORRECTED: Point to the 'public' directory where your site files are.
-  publish = "public/"
-  # This line is correct and tells Netlify where to find the serverless functions.
+  # Tell Netlify the root directory is the publish directory.
+  publish = "."
+  # The functions directory remains the same.
   functions = "netlify/functions/"
 
 [functions]

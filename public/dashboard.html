@@ -21,7 +21,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"></script>
 
     <!-- Main Styles -->
-    <link rel="stylesheet" href="styles/dashboard.css">
+    <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
     <div id="loading-spinner" class="fixed inset-0 bg-black z-50 flex items-center justify-center">
@@ -37,7 +37,7 @@
         <aside class="w-64 flex-shrink-0 p-6 flex-col hidden md:flex card border-r border-t-0 border-b-0 border-l-0">
             <div class="flex-grow">
                 <div class="flex items-center gap-3 mb-10">
-                    <img src="/assets/images/cv.webp" alt="Calverse Logo" class="w-10 h-10 rounded-lg object-contain">
+                    <img src="cv.webp" alt="Calverse Logo" class="w-10 h-10 rounded-lg object-contain">
                     <h1 class="text-2xl font-bold text-main">Calverse</h1>
                 </div>
                 <nav id="main-nav-desktop" class="flex flex-col gap-2">
@@ -61,7 +61,7 @@
                     <div class="flex items-center justify-between h-20">
                         <h1 id="header-title" class="text-3xl font-bold text-main hidden md:block">Dashboard</h1>
                          <div class="flex items-center gap-3 md:hidden">
-                            <img src="/assets/images/cv.webp" alt="Calverse Logo" class="w-10 h-10 rounded-lg object-contain">
+                            <img src="cv.webp" alt="Calverse Logo" class="w-10 h-10 rounded-lg object-contain">
                             <h1 class="text-xl font-bold text-main">Calverse</h1>
                         </div>
 
@@ -786,13 +786,13 @@
 
     <div id="popup-notification" class="fixed top-8 left-1/2 -translate-x-1/2 p-4 rounded-lg text-white shadow-lg opacity-0 -translate-y-4 pointer-events-none"><p></p></div>
 
-  <script type="module" src="scripts/firebase-init.js"></script>
+  <script type="module" src="firebase-init.js"></script>
     
-    <script type="module" src="scripts/dashboard.js"></script>
-    <script type="module" src="scripts/food.js"></script>
-    <script type="module" src="scripts/analyzer.js"></script>
-    <script type="module" src="scripts/tools.js"></script>
-    <script type="module" src="scripts/calculator.js"></script>
+    <script type="module" src="dashboard.js"></script>
+    <script type="module" src="food.js"></script>
+    <script type="module" src="analyzer.js"></script>
+    <script type="module" src="tools.js"></script>
+    <script type="module" src="calculator.js"></script>
     <script type="module">
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons(); 
