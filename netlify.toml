@@ -2,7 +2,7 @@
 
 [build]
   # This tells Netlify the root directory is the publish directory.
-  publish = "."
+  publish = "calverse-project"
   # The functions directory remains the same.
   functions = "netlify/functions/"
 
