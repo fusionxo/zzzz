@@ -1,7 +1,11 @@
-# Netlify configuration file
-
 [build]
-  # This tells Netlify your published website is in the 'pages' directory.
-  publish = "pages/"
-  # This tells Netlify where to find the serverless functions.
-  functions = "netlify/functions/"
+  command = "echo 'No build command'"
+  publish = "public"
+  functions = "netlify/functions"
+
+[dev]
+  command = "npm start"
+  targetPort = 3000
+  port = 8888
+  publish = "public"
+  autoLaunch = true
