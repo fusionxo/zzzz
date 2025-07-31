@@ -1,11 +1,10 @@
-[build]
-  command = "echo 'No build command'"
-  publish = "public"
-  functions = "netlify/functions"
+# Netlify configuration file
 
-[dev]
-  command = "npm start"
-  targetPort = 3000
-  port = 8888
-  publish = "public"
-  autoLaunch = true
+[build]
+  # CORRECTED: Point to the 'public' directory where your site files are.
+  publish = "public/"
+  # This line is correct and tells Netlify where to find the serverless functions.
+  functions = "netlify/functions/"
+
+[functions]
+  directory = "netlify/functions"
