@@ -1,14 +1,14 @@
 /**
  * @fileoverview Health Label Analyzer - Analyzes food labels using AI and provides health scores and personalized advice.
- * This version uses a secure Netlify proxy for all API calls.
- * @version 3.0.0
+ * This version uses a secure Netlify proxy for all API calls and ES Modules for dependencies.
+ * @version 3.1.0
  */
+
+// Import necessary Firebase services directly from our init file
+import { auth, db, doc, getDoc } from './firebase-init.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
-
-    // --- Firebase Instances (from global scope) ---
-    const { auth, db, doc, getDoc } = window.firebaseInstances || {};
 
     // --- DOM Elements Cache ---
     const elements = {
@@ -333,7 +333,6 @@ Scoring: 1-3 (Poor), 4-6 (Fair), 7-8 (Good), 9-10 (Excellent). Provide detailed 
             if (!categoryInfo) return;
             const { score = 0, reason = 'No analysis available', additives = [] } = data;
             const gradeInfo = getGradeInfo(score);
-            // REMOVED: DOMPurify.sanitize()
             const sanitizedReason = reason;
             breakdownHTML += `
                 <div class="card p-4 mb-3">
@@ -399,7 +398,6 @@ Scoring: 1-3 (Poor), 4-6 (Fair), 7-8 (Good), 9-10 (Excellent). Provide detailed 
         elements.additiveModal.classList.remove('hidden');
         try {
             const info = await callGeminiForText(`Provide detailed information about the food additive "${additiveName}". Include its purpose, potential health effects, and safety concerns. Keep the response concise but informative.`);
-            // REMOVED: DOMPurify.sanitize()
             elements.modalBody.innerHTML = `<div class="text-sub whitespace-pre-wrap">${info}</div>`;
         } catch (error) {
             elements.modalBody.innerHTML = `<div class="text-red-400">Failed to load additive information. ${error.message}</div>`;
