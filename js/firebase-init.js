@@ -1,19 +1,45 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, onSnapshot, increment, arrayUnion, updateDoc, getDocs, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+/**
+ * @fileoverview Netlify serverless function to securely expose
+ * Firebase configuration to the client-side application.
+ */
 
-const firebaseConfig = {
-    apiKey: "AIzaSyAS1fvvgtRXx9wLwmJec-2tkBX2PlnAuN0",
-    authDomain: "calversev2.firebaseapp.com",
-    projectId: "calversev2",
-    storageBucket: "calversev2.appspot.com",
-    messagingSenderId: "794294005093",
-    appId: "1:794294005093:web:6104521d5e4a2de812858c",
+exports.handler = async function(event, context) {
+  // Check to ensure the request is a GET request
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Method Not Allowed' }),
+    };
+  }
+
+  // These variables are pulled from your Netlify build settings.
+  const firebaseConfig = {
+    apiKey: process.env.FIREBASE_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.FIREBASE_APP_ID,
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID, // Optional
+  };
+
+  // Basic validation to ensure all required keys are present
+  for (const key in firebaseConfig) {
+    if (key !== 'measurementId' && !firebaseConfig[key]) {
+      console.error(`Missing environment variable: ${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'Server configuration error. A Firebase environment variable is missing.' }),
+      };
+    }
+  }
+
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*', // Or specify your site's domain for better security
+    },
+    body: JSON.stringify(firebaseConfig),
+  };
 };
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-
-window.firebaseInstances = { auth, db, onAuthStateChanged, signOut, sendPasswordResetEmail, doc, setDoc, onSnapshot, increment, arrayUnion, updateDoc, getDocs, collection, getDoc };
