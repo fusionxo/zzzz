@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royverse Admin Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* Custom Styles for the Royverse Theme */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f0f0f;
+            color: #f0f0f0;
+        }
+        .accent-bg { background-color: #ffe600; }
+        .accent-text { color: #ffe600; }
+        .accent-border { border-color: #ffe600; }
+        .accent-ring:focus { ring-color: #ffe600; }
+
+        /* Custom scrollbar for a better dark mode experience */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ffe600;
+        }
+
+        /* Style for disabled buttons to make them look inactive */
+        .disabled-button {
+            background-color: #4a4a4a;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .disabled-button:hover {
+            background-color: #4a4a4a;
+        }
+
+        /* Modal backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.75);
+        }
+    </style>
+</head>
+<body class="h-full antialiased">
+
+    <!-- Main Container -->
+    <div id="app-container" class="flex h-full">
+
+        <!-- Loading State -->
+        <div id="loading-state" class="flex items-center justify-center w-full h-full">
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin text-5xl accent-text"></i>
+                <p class="mt-4 text-lg">Initializing Dashboard...</p>
+            </div>
+        </div>
+
+        <!-- Access Denied State -->
+        <div id="access-denied-state" class="hidden flex-col items-center justify-center w-full h-full p-4 text-center">
+            <i class="fas fa-lock text-5xl text-red-500"></i>
+            <h1 class="mt-4 text-3xl font-bold">Access Denied</h1>
+            <p class="mt-2 text-gray-400">You do not have permission to view this page.</p>
+            <p class="text-sm text-gray-500 mt-2">Your UID is not on the authorized admin list.</p>
+            <button id="sign-out-button-denied" class="mt-6 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors">Sign Out</button>
+        </div>
+
+        <!-- Login State -->
+        <div id="login-state" class="hidden flex-col items-center justify-center w-full h-full p-4">
+            <div class="w-full max-w-sm text-center">
+                <i class="fas fa-door-open text-5xl accent-text"></i>
+                <h1 class="mt-4 text-3xl font-bold">Admin Login</h1>
+                <p class="mt-2 text-gray-400 mb-6">Please sign in to access the dashboard.</p>
+                
+                <!-- Email/Password Form -->
+                <form id="email-password-form" class="space-y-4">
+                    <input id="email-input" type="email" placeholder="Email" class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-4 focus:outline-none focus:ring-2 accent-ring" required>
+                    <input id="password-input" type="password" placeholder="Password" class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-4 focus:outline-none focus:ring-2 accent-ring" required>
+                    <p id="auth-error" class="text-red-500 text-sm h-4"></p>
+                    <button id="email-signin-button" type="submit" class="w-full px-6 py-3 accent-bg text-black font-semibold rounded-lg shadow-md hover:bg-yellow-400 transition-colors">
+                        Sign In
+                    </button>
+                </form>
+
+                <div class="my-4 flex items-center">
+                    <div class="flex-grow border-t border-gray-700"></div>
+                    <span class="flex-shrink mx-4 text-gray-500">OR</span>
+                    <div class="flex-grow border-t border-gray-700"></div>
+                </div>
+
+                <!-- Google Sign In Button -->
+                <button id="google-signin-button" class="w-full px-6 py-3 bg-gray-800 border border-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 transition-all">
+                    <i class="fab fa-google mr-2"></i> Sign In with Google
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Content (Hidden by default) -->
+        <div id="dashboard-content" class="hidden flex flex-grow">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-black p-6 flex-shrink-0 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center mb-10">
+                        <i class="fas fa-shield-halved text-3xl accent-text"></i>
+                        <h1 class="ml-3 text-2xl font-bold">Royverse</h1>
+                    </div>
+                    <nav class="flex flex-col space-y-2">
+                        <a href="#" class="tab-link active-tab flex items-center px-4 py-2 rounded-md" data-tab="dashboard">
+                            <i class="fas fa-chart-pie w-6"></i><span>Dashboard</span>
+                        </a>
+                        <a href="#" class="tab-link flex items-center px-4 py-2 rounded-md" data-tab="users">
+                            <i class="fas fa-users w-6"></i><span>Users</span>
+                        </a>
+                        <a href="#" class="tab-link flex items-center px-4 py-2 rounded-md" data-tab="feedback">
+                            <i class="fas fa-comment-dots w-6"></i><span>Feedback</span>
+                        </a>
+                        <a href="#" class="tab-link flex items-center px-4 py-2 rounded-md" data-tab="tools">
+                            <i class="fas fa-tools w-6"></i><span>Tools</span>
+                        </a>
+                    </nav>
+                </div>
+                <div class="border-t border-gray-800 pt-4">
+                     <p class="text-xs text-gray-500">Signed in as:</p>
+                     <p id="admin-email" class="text-sm font-medium truncate"></p>
+                     <button id="sign-out-button" class="mt-4 w-full text-left flex items-center px-4 py-2 text-sm text-gray-400 hover:accent-text hover:bg-gray-800 rounded-md transition-colors">
+                        <i class="fas fa-sign-out-alt w-6"></i><span>Sign Out</span>
+                     </button>
+                </div>
+                 <style>
+                    .tab-link { color: #a0a0a0; }
+                    .tab-link:hover { background-color: #1a1a1a; color: #ffe600; }
+                    .tab-link.active-tab { background-color: #ffe600; color: #0f0f0f; font-weight: 600; }
+                </style>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="flex-grow p-4 md:p-8 bg-gray-900 overflow-y-auto">
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="tab-content">
+                    <h2 class="text-3xl font-bold mb-6">Overview</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Stat Cards -->
+                        <div class="bg-black p-6 rounded-lg shadow-lg">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-yellow-500 bg-opacity-20"><i class="fas fa-users text-xl accent-text"></i></div>
+                                <div class="ml-4">
+                                    <p class="text-sm text-gray-400">Total Users</p>
+                                    <p id="total-users" class="text-2xl font-bold">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-black p-6 rounded-lg shadow-lg">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-500 bg-opacity-20"><i class="fas fa-venus-mars text-xl text-blue-400"></i></div>
+                                <div class="ml-4">
+                                    <p class="text-sm text-gray-400">Gender Ratio</p>
+                                    <p id="gender-ratio" class="text-2xl font-bold">0 M / 0 F</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-black p-6 rounded-lg shadow-lg">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-500 bg-opacity-20"><i class="fas fa-user-plus text-xl text-green-400"></i></div>
+                                <div class="ml-4">
+                                    <p class="text-sm text-gray-400">New Users (Week)</p>
+                                    <p id="new-users-week" class="text-2xl font-bold">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-black p-6 rounded-lg shadow-lg">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-red-500 bg-opacity-20"><i class="fas fa-fire-alt text-xl text-red-400"></i></div>
+                                <div class="ml-4">
+                                    <p class="text-sm text-gray-400">High Calorie Goals</p>
+                                    <p id="high-calorie-users" class="text-2xl font-bold">0</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="users-tab" class="tab-content hidden">
+                    <h2 class="text-3xl font-bold mb-6">User Management</h2>
+                    <!-- Filters and Search -->
+                    <div class="bg-black p-4 rounded-lg mb-6 flex flex-col md:flex-row gap-4 items-center">
+                        <div class="relative flex-grow w-full md:w-auto">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                            <input id="search-input" type="text" placeholder="Search by name, email, or UID..." class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 accent-ring">
+                        </div>
+                        <select id="gender-filter" class="w-full md:w-auto bg-gray-800 border border-gray-700 rounded-md py-2 px-4 focus:outline-none focus:ring-2 accent-ring">
+                            <option value="all">All Genders</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <select id="premium-filter" class="w-full md:w-auto bg-gray-800 border border-gray-700 rounded-md py-2 px-4 focus:outline-none focus:ring-2 accent-ring">
+                            <option value="all">All Status</option>
+                            <option value="true">Premium</option>
+                            <option value="false">Not Premium</option>
+                        </select>
+                    </div>
+                    <!-- Users Table -->
+                    <div class="bg-black rounded-lg shadow-lg overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-400 uppercase bg-gray-800">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Name</th>
+                                    <th scope="col" class="px-6 py-3">Email</th>
+                                    <th scope="col" class="px-6 py-3">Status</th>
+                                    <th scope="col" class="px-6 py-3">Gender</th>
+                                    <th scope="col" class="px-6 py-3">Age</th>
+                                    <th scope="col" class="px-6 py-3">Joined</th>
+                                    <th scope="col" class="px-6 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- JS will populate this -->
+                                <tr><td colspan="7" class="text-center p-8 text-gray-500">Loading user data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Feedback Tab -->
+                <div id="feedback-tab" class="tab-content hidden">
+                    <h2 class="text-3xl font-bold mb-6">User Feedback</h2>
+                    <div id="feedback-list" class="space-y-4">
+                        <!-- JS will populate this -->
+                        <p class="text-gray-500">No feedback submitted yet.</p>
+                    </div>
+                </div>
+
+                <!-- Tools Tab -->
+                <div id="tools-tab" class="tab-content hidden">
+                    <h2 class="text-3xl font-bold mb-6">Data Tools</h2>
+                    <div class="bg-black p-6 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-semibold mb-4">Export User Data</h3>
+                        <p class="text-gray-400 mb-4">Download a CSV file containing data for all users currently displayed in the users table.</p>
+                        <button id="export-csv-button" class="px-5 py-2 accent-bg text-black font-bold rounded-md hover:bg-yellow-400 transition-colors">
+                            <i class="fas fa-file-csv mr-2"></i>Export to CSV
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- View User Profile Modal -->
+    <div id="view-profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="text-xl font-semibold">User Profile</h3>
+                <button class="close-modal-btn text-gray-500 hover:text-white">&times;</button>
+            </div>
+            <div id="profile-content-area" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <!-- JS will populate this -->
+            </div>
+            <div class="p-4 bg-gray-900 border-t border-gray-700 flex-shrink-0 flex justify-end">
+                <button class="close-modal-btn px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit User Modal -->
+    <div id="edit-user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="text-xl font-semibold">Edit User</h3>
+                <button class="close-modal-btn text-gray-500 hover:text-white">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="edit-user-form">
+                    <input type="hidden" id="edit-user-uid">
+                    <div class="mb-4">
+                        <label for="edit-calorieGoal" class="block text-sm font-medium text-gray-400 mb-1">Calorie Goal</label>
+                        <input type="number" id="edit-calorieGoal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:outline-none focus:ring-2 accent-ring">
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-waterGoal" class="block text-sm font-medium text-gray-400 mb-1">Water Goal (Liters)</label>
+                        <input type="number" id="edit-waterGoal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:outline-none focus:ring-2 accent-ring">
+                    </div>
+                     <div class="mb-6">
+                        <label for="edit-isPremium" class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="edit-isPremium" class="form-checkbox h-5 w-5 accent-bg text-yellow-500 rounded border-gray-600 bg-gray-700 focus:ring-offset-gray-800 focus:ring-2 accent-ring">
+                            <span class="ml-3 text-gray-300">Premium Status</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" class="close-modal-btn px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Cancel</button>
+                        <button type="submit" class="px-4 py-2 accent-bg text-black font-bold rounded-md hover:bg-yellow-400">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Logs Modal -->
+    <div id="view-logs-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl h-3/4 flex flex-col">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-xl font-semibold">User Logs for <span id="log-user-name" class="accent-text"></span></h3>
+                <button class="close-modal-btn text-gray-500 hover:text-white">&times;</button>
+            </div>
+            <div id="log-content-area" class="p-6 overflow-y-auto flex-grow">
+                <div class="text-center"><i class="fas fa-spinner fa-spin text-3xl accent-text"></i><p class="mt-2">Loading logs...</p></div>
+            </div>
+             <div class="p-4 bg-gray-900 border-t border-gray-700 flex-shrink-0 flex justify-end">
+                <button class="close-modal-btn px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm">
+            <div class="p-6 text-center">
+                <i class="fas fa-exclamation-triangle text-4xl text-red-500 mx-auto mb-4"></i>
+                <h3 id="confirm-title" class="text-lg font-semibold mb-2">Are you sure?</h3>
+                <p id="confirm-message" class="text-sm text-gray-400">This action cannot be undone.</p>
+            </div>
+            <div class="px-6 py-4 bg-gray-900 flex justify-end space-x-4 rounded-b-lg">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Cancel</button>
+                <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white font-bold rounded-md hover:bg-red-500">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy, limit, where, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        // --- CONFIGURATION ---
+        // IMPORTANT: To grant admin access, you MUST add the user's Firebase UID to this array.
+        // Find the UID in the Firebase Console > Authentication > Users tab after they sign in once.
+        const adminUIDs = ["si9Hyy9H4fbJzgxBzcsHXZklkbE2"]; 
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyAS1fvvgtRXx9wLwmJec-2tkBX2PlnAuN0",
+          authDomain: "calversev2.firebaseapp.com",
+          databaseURL: "https://calversev2-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "calversev2",
+          storageBucket: "calversev2.appspot.com", // Corrected storageBucket format
+          messagingSenderId: "794294005093",
+          appId: "1:794294005093:web:6104521d5e4a2de812858c",
+          measurementId: "G-PTT8TN4JG0"
+        };
+        
+        // --- INITIALIZATION ---
+        setLogLevel('debug');
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        let allUsers = []; // Cache for all user data
+        let currentFilteredUsers = []; // For CSV export
+        let currentUser = null;
+
+        // --- DOM ELEMENTS ---
+        const loadingState = document.getElementById('loading-state');
+        const loginState = document.getElementById('login-state');
+        const accessDeniedState = document.getElementById('access-denied-state');
+        const dashboardContent = document.getElementById('dashboard-content');
+        const authError = document.getElementById('auth-error');
+        
+        // --- AUTHENTICATION ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                // Core security check: Is the signed-in user's UID in our admin list?
+                if (adminUIDs.includes(user.uid)) {
+                    console.log("Admin access granted for UID:", user.uid);
+                    showDashboard(user);
+                    await loadAllData();
+                } else {
+                    // If not an admin, deny access.
+                    console.warn(`Access denied for UID: ${user.uid}. This UID is not in the adminUIDs list.`);
+                    showAccessDenied();
+                }
+            } else {
+                // No user is signed in.
+                console.log("No user signed in. Showing login page.");
+                showLogin();
+            }
+        });
+
+        document.getElementById('google-signin-button').addEventListener('click', () => {
+            authError.textContent = '';
+            signInWithPopup(auth, provider).catch(handleAuthError);
+        });
+
+        document.getElementById('email-password-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            authError.textContent = '';
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            // Attempt to sign in with provided credentials.
+            signInWithEmailAndPassword(auth, email, password)
+                .catch(handleAuthError); // Handle any errors that occur.
+        });
+
+        document.getElementById('sign-out-button').addEventListener('click', () => signOut(auth));
+        document.getElementById('sign-out-button-denied').addEventListener('click', () => signOut(auth));
+
+        function handleAuthError(error) {
+            console.error("Authentication error:", error.code, error.message);
+            switch (error.code) {
+                case 'auth/wrong-password':
+                    authError.textContent = 'Incorrect password. Please try again.';
+                    break;
+                case 'auth/user-not-found':
+                    authError.textContent = 'No account found with this email.';
+                    break;
+                case 'auth/invalid-credential':
+                     authError.textContent = 'Invalid credentials. Please check email and password.';
+                     break;
+                case 'auth/email-already-in-use':
+                    authError.textContent = 'This email is already in use.';
+                    break;
+                case 'auth/weak-password':
+                    authError.textContent = 'Password should be at least 6 characters.';
+                    break;
+                default:
+                    authError.textContent = 'An authentication error occurred.';
+            }
+        }
+
+
+        // --- UI STATE MANAGEMENT ---
+        function showLoading() {
+            loadingState.classList.remove('hidden');
+            loginState.classList.add('hidden');
+            accessDeniedState.classList.add('hidden');
+            dashboardContent.classList.add('hidden');
+        }
+
+        function showLogin() {
+            loadingState.classList.add('hidden');
+            loginState.classList.remove('hidden');
+            loginState.classList.add('flex');
+            accessDeniedState.classList.add('hidden');
+            dashboardContent.classList.add('hidden');
+        }
+
+        function showAccessDenied() {
+            loadingState.classList.add('hidden');
+            loginState.classList.add('hidden');
+            accessDeniedState.classList.remove('hidden');
+            accessDeniedState.classList.add('flex');
+            dashboardContent.classList.add('hidden');
+        }
+
+        function showDashboard(user) {
+            loadingState.classList.add('hidden');
+            loginState.classList.add('hidden');
+            accessDeniedState.classList.add('hidden');
+            dashboardContent.classList.remove('hidden');
+            dashboardContent.classList.add('flex');
+            document.getElementById('admin-email').textContent = user.email || 'N/A';
+        }
+
+        // --- DATA FETCHING & RENDERING ---
+        async function loadAllData() {
+            try {
+                // Fetch users
+                const usersSnapshot = await getDocs(collection(db, "users"));
+                allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                currentFilteredUsers = [...allUsers]; // Initialize filtered list
+                
+                // Fetch feedback
+                const feedbackSnapshot = await getDocs(query(collection(db, "feedback"), orderBy("timestamp", "desc")));
+                const feedbackData = feedbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Render all components
+                renderDashboardCards(allUsers);
+                renderUsersTable(allUsers);
+                renderFeedbackList(feedbackData);
+
+            } catch (error) {
+                console.error("Error loading data:", error);
+                const tableBody = document.getElementById('users-table-body');
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">Failed to load user data. Check Firestore Security Rules and console for errors.</td></tr>`;
+            }
+        }
+
+        function renderDashboardCards(users) {
+            document.getElementById('total-users').textContent = users.length;
+
+            const maleCount = users.filter(u => u.gender && u.gender.toLowerCase() === 'male').length;
+            const femaleCount = users.filter(u => u.gender && u.gender.toLowerCase() === 'female').length;
+            document.getElementById('gender-ratio').textContent = `${maleCount} M / ${femaleCount} F`;
+            
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            const newUsersWeek = users.filter(u => u.createdAt && u.createdAt.toDate() > oneWeekAgo).length;
+            document.getElementById('new-users-week').textContent = newUsersWeek;
+
+            const highCalorieUsers = users.filter(u => u.calorieGoal && u.calorieGoal > 2000).length;
+            document.getElementById('high-calorie-users').textContent = highCalorieUsers;
+        }
+
+        function renderUsersTable(users) {
+            const tableBody = document.getElementById('users-table-body');
+            tableBody.innerHTML = ''; // Clear existing rows
+
+            if (users.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-500">No users found matching criteria.</td></tr>`;
+                return;
+            }
+
+            users.forEach(user => {
+                const age = user.dob ? calculateAge(user.dob) : 'N/A';
+                const joinedDate = user.createdAt ? user.createdAt.toDate().toLocaleDateString() : 'N/A';
+                const isPremium = user.isPremium === true;
+
+                const row = document.createElement('tr');
+                row.className = 'bg-black border-b border-gray-800 hover:bg-gray-900';
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium whitespace-nowrap">
+                        <button class="view-profile-btn accent-text hover:underline" data-uid="${user.id}">${user.name || 'N/A'}</button>
+                    </td>
+                    <td class="px-6 py-4 text-gray-400">${user.email || 'N/A'}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${isPremium ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'}">
+                            ${isPremium ? 'PREMIUM' : 'STANDARD'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 capitalize">${user.gender || 'N/A'}</td>
+                    <td class="px-6 py-4 text-gray-400">${age}</td>
+                    <td class="px-6 py-4 text-gray-400">${joinedDate}</td>
+                    <td class="px-6 py-4 text-right space-x-2">
+                        <button class="view-logs-btn p-2 text-gray-400 hover:accent-text" data-uid="${user.id}" data-name="${user.name || 'User'}" title="View Logs"><i class="fas fa-file-alt"></i></button>
+                        <button class="edit-user-btn p-2 text-gray-400 hover:accent-text" data-uid="${user.id}" title="Edit User"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-user-btn p-2 text-red-500 hover:text-red-400" data-uid="${user.id}" title="Delete User"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // Re-attach event listeners after rendering
+            attachTableActionListeners();
+        }
+        
+        function renderFeedbackList(feedbackItems) {
+            const listContainer = document.getElementById('feedback-list');
+            listContainer.innerHTML = '';
+            if (feedbackItems.length === 0) {
+                listContainer.innerHTML = '<p class="text-gray-500">No feedback submitted yet.</p>';
+                return;
+            }
+            
+            feedbackItems.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-black p-4 rounded-lg shadow';
+                const timestamp = item.timestamp ? item.timestamp.toDate().toLocaleString() : 'No date';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-sm font-semibold accent-text">${item.userID}</p>
+                        <p class="text-xs text-gray-500">${timestamp}</p>
+                    </div>
+                    <p class="text-gray-300">${item.message}</p>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        // --- EVENT LISTENERS & ACTIONS ---
+        function attachTableActionListeners() {
+            document.querySelectorAll('.view-profile-btn').forEach(btn => btn.addEventListener('click', handleViewProfile));
+            document.querySelectorAll('.view-logs-btn').forEach(btn => btn.addEventListener('click', handleViewLogs));
+            document.querySelectorAll('.edit-user-btn').forEach(btn => btn.addEventListener('click', handleEditUser));
+            document.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', handleDeleteUser));
+        }
+
+        // Filtering and Search
+        document.getElementById('search-input').addEventListener('input', applyFilters);
+        document.getElementById('gender-filter').addEventListener('change', applyFilters);
+        document.getElementById('premium-filter').addEventListener('change', applyFilters);
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const genderFilter = document.getElementById('gender-filter').value;
+            const premiumFilter = document.getElementById('premium-filter').value;
+
+            currentFilteredUsers = allUsers.filter(user => {
+                const matchesSearch = searchTerm === '' ||
+                    (user.name && user.name.toLowerCase().includes(searchTerm)) ||
+                    (user.email && user.email.toLowerCase().includes(searchTerm)) ||
+                    (user.id.toLowerCase().includes(searchTerm));
+
+                const matchesGender = genderFilter === 'all' || (user.gender && user.gender.toLowerCase() === genderFilter);
+                
+                const userIsPremium = user.isPremium === true;
+                const matchesPremium = premiumFilter === 'all' ||
+                    (premiumFilter === 'true' && userIsPremium) ||
+                    (premiumFilter === 'false' && !userIsPremium);
+
+                return matchesSearch && matchesGender && matchesPremium;
+            });
+
+            renderUsersTable(currentFilteredUsers);
+        }
+
+        // User actions
+        function handleViewProfile(e) {
+            const uid = e.currentTarget.dataset.uid;
+            const user = allUsers.find(u => u.id === uid);
+            if (!user) return;
+
+            const profileContent = document.getElementById('profile-content-area');
+            
+            const joinedDate = user.createdAt?.toDate ? user.createdAt.toDate().toLocaleString() : 'N/A';
+            const age = user.dob ? calculateAge(user.dob) : 'N/A';
+
+            profileContent.innerHTML = `
+                <div><p class="text-gray-400">Name</p><p class="font-semibold">${user.name || 'N/A'}</p></div>
+                <div><p class="text-gray-400">Email</p><p class="font-semibold">${user.email || 'N/A'}</p></div>
+                <div><p class="text-gray-400">UID</p><p class="font-semibold break-all">${user.uid || 'N/A'}</p></div>
+                <div><p class="text-gray-400">Joined</p><p class="font-semibold">${joinedDate}</p></div>
+                <div><p class="text-gray-400">Gender</p><p class="font-semibold capitalize">${user.gender || 'N/A'}</p></div>
+                <div><p class="text-gray-400">Age</p><p class="font-semibold">${age}</p></div>
+                <div><p class="text-gray-400">Date of Birth</p><p class="font-semibold">${user.dob || 'N/A'}</p></div>
+                <div><p class="text-gray-400">Premium Status</p><p class="font-semibold">${user.isPremium ? 'Yes' : 'No'}</p></div>
+                <div><p class="text-gray-400">Calorie Goal</p><p class="font-semibold">${user.calorieGoal || 'N/A'} kcal</p></div>
+                <div><p class="text-gray-400">Water Goal</p><p class="font-semibold">${user.waterGoalLiters || 'N/A'} Liters</p></div>
+                <div><p class="text-gray-400">Glass Size</p><p class="font-semibold">${user.glassSizeMl || 'N/A'} ml</p></div>
+            `;
+            
+            openModal('view-profile-modal');
+        }
+
+        async function handleViewLogs(e) {
+            const uid = e.currentTarget.dataset.uid;
+            const name = e.currentTarget.dataset.name;
+            document.getElementById('log-user-name').textContent = name;
+            const logContentArea = document.getElementById('log-content-area');
+            logContentArea.innerHTML = `<div class="text-center"><i class="fas fa-spinner fa-spin text-3xl accent-text"></i><p class="mt-2">Loading logs...</p></div>`;
+            openModal('view-logs-modal');
+
+            try {
+                // Correctly query the dailyData sub-collection
+                const dailyDataSnapshot = await getDocs(collection(db, `users/${uid}/dailyData`));
+
+                let allFoodLogs = [];
+                let allWaterLogs = [];
+
+                // Iterate through each daily document (e.g., '2025-07-23')
+                dailyDataSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = doc.id; // The document ID is the date
+
+                    // Check for foodLog array and add to master list
+                    if (data.foodLog && Array.isArray(data.foodLog)) {
+                        data.foodLog.forEach(item => {
+                            allFoodLogs.push({ ...item, date });
+                        });
+                    }
+
+                    // Check for waterLog array and add to master list
+                    if (data.waterLog && Array.isArray(data.waterLog)) {
+                        data.waterLog.forEach(item => {
+                            allWaterLogs.push({ ...item, date });
+                        });
+                    }
+                });
+
+                let content = '<div>';
+                
+                // Render Food Logs
+                content += '<h4 class="text-lg font-bold mb-2 accent-text">Food Log</h4>';
+                if (allFoodLogs.length === 0) {
+                    content += '<p class="text-gray-500 mb-4">No food entries.</p>';
+                } else {
+                    content += '<ul class="list-disc list-inside text-gray-400 mb-4 space-y-1">';
+                    allFoodLogs.forEach(item => {
+                        const foodName = item.foodItem || item.name || 'N/A';
+                        content += `<li>[${item.date}] ${foodName} (${item.mealType || 'N/A'}) - ${item.nutrition?.calories || 0} kcal</li>`;
+                    });
+                    content += '</ul>';
+                }
+                
+                // Render Water Logs
+                content += '<h4 class="text-lg font-bold mb-2 accent-text">Water Log</h4>';
+                 if (allWaterLogs.length === 0) {
+                    content += '<p class="text-gray-500 mb-4">No water entries.</p>';
+                } else {
+                    content += '<ul class="list-disc list-inside text-gray-400 mb-4 space-y-1">';
+                    allWaterLogs.forEach(item => {
+                        let time = 'N/A';
+                        if (item.timestamp) {
+                            // Handle both Firestore Timestamp and string formats
+                            const dateObj = item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp);
+                            time = dateObj.toLocaleTimeString();
+                        }
+                        content += `<li>[${item.date}] ${item.amount || 0}ml at ${time}</li>`;
+                    });
+                    content += '</ul>';
+                }
+                
+                content += '</div>';
+                logContentArea.innerHTML = content;
+
+            } catch (error) {
+                console.error("Error fetching logs:", error);
+                logContentArea.innerHTML = `<p class="text-red-500">Failed to load logs.</p>`;
+            }
+        }
+
+        function handleEditUser(e) {
+            const uid = e.currentTarget.dataset.uid;
+            const user = allUsers.find(u => u.id === uid);
+            if (!user) return;
+
+            document.getElementById('edit-user-uid').value = user.id;
+            document.getElementById('edit-calorieGoal').value = user.calorieGoal || '';
+            document.getElementById('edit-waterGoal').value = user.waterGoalLiters || '';
+            document.getElementById('edit-isPremium').checked = user.isPremium === true;
+            
+            openModal('edit-user-modal');
+        }
+        
+        document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const uid = document.getElementById('edit-user-uid').value;
+            const calorieGoal = parseInt(document.getElementById('edit-calorieGoal').value, 10);
+            const waterGoal = parseFloat(document.getElementById('edit-waterGoal').value);
+            const isPremium = document.getElementById('edit-isPremium').checked;
+            
+            const userRef = doc(db, 'users', uid);
+            try {
+                await updateDoc(userRef, {
+                    calorieGoal: isNaN(calorieGoal) ? null : calorieGoal,
+                    waterGoalLiters: isNaN(waterGoal) ? null : waterGoal,
+                    isPremium: isPremium
+                });
+                closeModal('edit-user-modal');
+                await loadAllData(); // Refresh data
+                showSuccess("User updated successfully!");
+            } catch (error) {
+                console.error("Error updating user:", error);
+                showError("Failed to update user.");
+            }
+        });
+
+        function handleDeleteUser(e) {
+            const uid = e.currentTarget.dataset.uid;
+            showConfirmation(
+                'Delete User?',
+                'This will permanently delete the user document. Subcollections like logs will NOT be removed automatically. Are you sure you want to proceed?',
+                async () => {
+                    try {
+                        await deleteDoc(doc(db, 'users', uid));
+                        await loadAllData(); // Refresh data
+                        showSuccess("User deleted successfully.");
+                    } catch (error) {
+                        console.error("Error deleting user:", error);
+                        showError("Failed to delete user.");
+                    }
+                }
+            );
+        }
+
+        // --- HELPERS ---
+        function calculateAge(dobString) {
+            // Expects dobString in "YYYY-MM-DD" format
+            if (!dobString || !/^\d{4}-\d{2}-\d{2}$/.test(dobString)) return 'N/A';
+            const birthDate = new Date(dobString);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        // --- MODAL & NOTIFICATION LOGIC ---
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        document.querySelectorAll('.close-modal-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.currentTarget.closest('.fixed').classList.add('hidden');
+            });
+        });
+
+        let confirmCallback = null;
+        function showConfirmation(title, message, callback) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            confirmCallback = callback;
+            openModal('confirm-modal');
+        }
+        
+        document.getElementById('confirm-action-btn').addEventListener('click', () => {
+            if (confirmCallback) {
+                confirmCallback();
+            }
+            closeModal('confirm-modal');
+        });
+        document.getElementById('confirm-cancel-btn').addEventListener('click', () => closeModal('confirm-modal'));
+        
+        function showError(message) { /* Simple console log for now, can be expanded to a toast notification */ console.error("UI Error:", message); }
+        function showSuccess(message) { console.log("UI Success:", message); }
+        
+        // --- TAB NAVIGATION ---
+        const tabLinks = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                tabLinks.forEach(l => l.classList.remove('active-tab'));
+                e.currentTarget.classList.add('active-tab');
+                
+                const tabId = e.currentTarget.dataset.tab;
+                tabContents.forEach(content => {
+                    if (content.id === `${tabId}-tab`) {
+                        content.classList.remove('hidden');
+                    } else {
+                        content.classList.add('hidden');
+                    }
+                });
+            });
+        });
+        
+        // --- TOOLS ---
+        document.getElementById('export-csv-button').addEventListener('click', () => {
+            if (currentFilteredUsers.length === 0) {
+                showError("No data to export.");
+                return;
+            }
+            
+            const headers = ['uid', 'name', 'email', 'gender', 'dob', 'isPremium', 'calorieGoal', 'waterGoalLiters', 'createdAt'];
+            const rows = currentFilteredUsers.map(user => {
+                return headers.map(header => {
+                    let value = user[header];
+                    if (header === 'createdAt' && value && value.toDate) {
+                        value = value.toDate().toISOString();
+                    }
+                    // Escape commas and quotes
+                    value = value ? `"${String(value).replace(/"/g, '""')}"` : '';
+                    return value;
+                }).join(',');
+            });
+            
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "royverse_users.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+    </script>
+</body>
+</html>

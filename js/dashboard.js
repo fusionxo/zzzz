@@ -1,30 +1,34 @@
 /**
  * @fileoverview Main client-side script for the Health Hub dashboard.
  * Handles Firebase authentication, data fetching, UI updates, and user interactions.
- * @version 4.5.1
+ * This version uses a secure Netlify proxy for all API calls and relies on a global
+ * Firebase instance for database and authentication services.
+ * @version 5.0.0
  */
-document.addEventListener('DOMContentLoaded', async () => {
-    // Wait for Firebase and config to be ready
-    await window.firebaseReady;
+document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // --- MODULE SCOPE VARIABLES ---
 
-    // Firebase Configuration and API Keys
-    const { auth, db, onAuthStateChanged, signOut, sendPasswordResetEmail, doc, setDoc, onSnapshot, increment, arrayUnion, updateDoc, getDocs, collection, geminiApiKeys } = window.firebaseInstances;
-    
-    // --- Gemini API Configuration with Failover ---
-    const GEMINI_API_CONFIGS = (geminiApiKeys.dashboard || []).map(key => ({
-        key,
-        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-    }));
-    
-    let currentApiIndex = 0;
-    let lastApiCallTimestamp = 0;
-    const API_COOLDOWN = 4000; // 4 seconds
+    // Firebase instances are now retrieved from the global scope, set by firebase-init.js
+    const {
+        auth,
+        db,
+        onAuthStateChanged,
+        signOut,
+        sendPasswordResetEmail,
+        doc,
+        setDoc,
+        onSnapshot,
+        increment,
+        arrayUnion,
+        updateDoc,
+        getDocs,
+        collection
+    } = window.firebaseInstances;
 
-
-    // DOM Element Cache for performance
+    // --- DOM Element Cache ---
+    // Caching DOM elements for performance to avoid repeated queries.
     const dom = {
         body: document.body,
         loadingSpinner: document.getElementById('loading-spinner'),
@@ -64,7 +68,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         mealTypeSelect: document.getElementById('meal-type-select'),
         logFoodBtn: document.getElementById('log-food-btn'),
         foodLogError: document.getElementById('food-log-error'),
-        
         profileModal: document.getElementById('profile-modal'),
         closeProfileModalBtn: document.getElementById('close-profile-modal-btn'),
         profileModalAvatar: document.getElementById('profile-modal-avatar'),
@@ -92,7 +95,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         ageInput: document.getElementById('age-input'),
         heightInput: document.getElementById('height-input'),
         activityLevelSelect: document.getElementById('activity-level-select'),
-        
         foodLogModal: document.getElementById('food-log-modal'),
         closeFoodLogModalBtn: document.getElementById('close-food-log-modal-btn'),
         foodLogModalList: document.getElementById('food-log-modal-list'),
@@ -105,7 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         prevMonthBtn: document.getElementById('prev-month-btn'),
         nextMonthBtn: document.getElementById('next-month-btn'),
         calendarGrid: document.getElementById('calendar-grid'),
-        presentDayBtn: document.getElementById('present-day-btn'),
         macrosCard: document.getElementById('macros-card'),
         macrosLegend: document.getElementById('macros-legend'),
         macrosChart: document.getElementById('macros-chart'),
@@ -126,17 +127,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         weightLogFormContainer: document.getElementById('weight-log-form-container'),
     };
 
-    // Application State
+    // --- Application State ---
     let userUid = null;
     let dailyDataUnsubscribe = null;
     let userDataUnsubscribe = null;
-    let userSettings = { 
-        name: 'User', 
-        calorieGoal: 2000, 
-        waterGoalLiters: 2, 
-        glassSizeMl: 250, 
-        isPremium: false, 
-        premiumPlan: null, 
+    let userSettings = {
+        name: 'User',
+        calorieGoal: 2000,
+        waterGoalLiters: 2,
+        glassSizeMl: 250,
+        isPremium: false,
+        premiumPlan: null,
         premiumExpirationDate: null,
         age: null,
         height: null,
@@ -145,11 +146,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     let dailyData = {};
     let selectedDate = new Date();
     let calendarDate = new Date();
-    let charts = { macros: null, hydration: null, weight: null };
+    let charts = {
+        macros: null,
+        hydration: null,
+        weight: null
+    };
     let hydrationHistory = [];
     let weightHistory = [];
     let isUserDataReady = false;
-    let preloadedNutritionData = null; 
+    let preloadedNutritionData = null;
 
     // --- GLOBAL NAMESPACE ---
     window.healthHub = window.healthHub || {};
@@ -170,7 +175,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentFoodLog.splice(itemIndex, 1);
             const dailyDocRef = doc(db, 'users', userUid, 'dailyData', dateStr);
             try {
-                await updateDoc(dailyDocRef, { foodLog: currentFoodLog });
+                await updateDoc(dailyDocRef, {
+                    foodLog: currentFoodLog
+                });
                 showPopup('Food item removed successfully.');
             } catch (error) {
                 console.error("Error removing food item from database: ", error);
@@ -180,6 +187,98 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error("Invalid index provided for food item deletion.");
         }
     };
+
+    /**
+     * Calls our secure Netlify proxy function for all Gemini API requests.
+     * @param {string} prompt - The prompt to send to the AI.
+     * @param {string} type - The category of the call ('dashboard', 'analyzer', etc.) to help the proxy use the correct API keys.
+     * @param {string|null} base64Image - The base64 encoded image string, if any.
+     * @returns {Promise<Object>} The JSON response from the proxy.
+     */
+    const callProxyApi = async (prompt, type, base64Image = null) => {
+        try {
+            const response = await fetch('/api/gemini-proxy', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt,
+                    type,
+                    base64Image
+                })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message || `Proxy Error: ${response.statusText}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to call proxy function:', error);
+            // Re-throw the error so the calling function can handle it and show a UI message.
+            throw error;
+        }
+    };
+
+    // --- Food Logging ---
+    const handleFoodLogSubmit = async (e) => {
+        e.preventDefault();
+        const foodItem = dom.foodItemInput.value;
+        if (!foodItem) return;
+        dom.logFoodBtn.disabled = true;
+        dom.logFoodBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>';
+        if (dom.foodLogError) dom.foodLogError.classList.add('hidden');
+
+        try {
+            let nutritionData;
+            if (preloadedNutritionData) {
+                nutritionData = preloadedNutritionData;
+            } else {
+                const prompt = `Analyze the exact nutritional content for "${foodItem}". Provide a valid JSON object with ONLY these keys: "calories", "protein", "carbohydrates", "fat". The values must be numbers. Do not include any text, just the JSON.`;
+
+                // This now calls our secure proxy instead of the Gemini API directly.
+                const result = await callProxyApi(prompt, 'dashboard');
+
+                if (!result.candidates || !result.candidates[0].content.parts[0].text) {
+                    throw new Error("Invalid response from API.");
+                }
+                const jsonText = result.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+                nutritionData = JSON.parse(jsonText);
+            }
+
+            const newLogEntry = {
+                foodItem,
+                mealType: dom.mealTypeSelect.value,
+                nutrition: {
+                    calories: Number(nutritionData.calories) || 0,
+                    protein: Number(nutritionData.protein) || 0,
+                    carbohydrates: Number(nutritionData.carbohydrates) || 0,
+                    fat: Number(nutritionData.fat) || 0
+                }
+            };
+            await updateDailyData({
+                foodLog: arrayUnion(newLogEntry)
+            });
+
+            dom.foodLogForm.reset();
+            updateInputStyles();
+            dom.foodLoggingModal.classList.add('hidden');
+            showPopup('Food item logged successfully!');
+
+        } catch (error) {
+            if (dom.foodLogError) {
+                dom.foodLogError.textContent = `Error: ${error.message}`;
+                dom.foodLogError.classList.remove('hidden');
+            }
+        } finally {
+            preloadedNutritionData = null;
+            dom.logFoodBtn.disabled = false;
+            dom.logFoodBtn.textContent = 'Analyze & Log';
+        }
+    };
+
+    // --- All other functions from the original file are included below ---
+    // (The following is the rest of the original dashboard.js code, which remains functionally unchanged)
 
     // --- DAILY QUOTE LOGIC ---
     const quotes = [
@@ -217,10 +316,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
-    
+
     function formatDisplayDate(date) {
         if (!date || !(date instanceof Date)) return 'N/A';
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
     }
 
     const showLoading = (isLoading) => {
@@ -238,64 +341,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     };
-    
+
     const showPopup = (message, isError = false) => {
         if (!dom.popupNotification) return;
         dom.popupNotification.querySelector('p').textContent = message;
         dom.popupNotification.classList.toggle('bg-red-500', isError);
         dom.popupNotification.classList.toggle('bg-green-500', !isError);
         dom.popupNotification.classList.remove('opacity-0', '-translate-y-4');
-        
+
         setTimeout(() => {
             dom.popupNotification.classList.add('opacity-0', '-translate-y-4');
         }, 3000);
     };
-    
-    // --- Gemini API Wrapper with Cooldown & Failover ---
-    const geminiFetchWithCooldown = async (bodyPayload) => {
-        const now = Date.now();
-        if (now - lastApiCallTimestamp < API_COOLDOWN) {
-            throw new Error(`Please wait ${Math.ceil((API_COOLDOWN - (now - lastApiCallTimestamp)) / 1000)}s.`);
-        }
-
-        if (GEMINI_API_CONFIGS.length === 0) {
-             throw new Error("API keys are not configured.");
-        }
-
-        let lastError = null;
-        for (let i = 0; i < GEMINI_API_CONFIGS.length; i++) {
-            const config = GEMINI_API_CONFIGS[currentApiIndex];
-            const apiUrl = `${config.url}?key=${config.key}`;
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bodyPayload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error.message || `API Error: ${response.statusText}`);
-                }
-
-                lastApiCallTimestamp = Date.now();
-                return await response.json();
-
-            } catch (error) {
-                console.warn(`API at index ${currentApiIndex} failed. Trying next...`, error);
-                lastError = error;
-                currentApiIndex = (currentApiIndex + 1) % GEMINI_API_CONFIGS.length;
-            }
-        }
-        throw new Error(`All API attempts failed. Last error: ${lastError.message}`);
-    };
 
     // --- AUTHENTICATION & INITIALIZATION ---
     function initialize() {
-        if (GEMINI_API_CONFIGS.length === 0 || !GEMINI_API_CONFIGS[0].key) {
-            console.error("Gemini API keys for Dashboard are not configured.");
-        }
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 userUid = user.uid;
@@ -326,7 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (dom.profileWelcome) dom.profileWelcome.textContent = `Hi ${userName.split(' ')[0]}`;
                 if (dom.mainWelcomeMessage) dom.mainWelcomeMessage.textContent = `Welcome back, ${userName.split(' ')[0]}!`;
                 if (dom.userAvatar) dom.userAvatar.textContent = userName.charAt(0).toUpperCase();
-                
+
                 if (dom.profileModalAvatar) dom.profileModalAvatar.textContent = userName.charAt(0).toUpperCase();
                 if (dom.profileModalName) dom.profileModalName.textContent = userName;
                 if (dom.profileModalEmail && auth.currentUser) {
@@ -348,7 +408,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             isUserDataReady = true;
             updateUI();
-            updatePremiumStatusUI(); 
+            updatePremiumStatusUI();
         });
     };
 
@@ -357,11 +417,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dailyDocRef = doc(db, 'users', userUid, 'dailyData', dateStr);
         dailyDataUnsubscribe = onSnapshot(dailyDocRef, (docSnap) => {
             dailyData = docSnap.exists() ? docSnap.data() : {};
-            
+
             const updateHistory = (historyArray, key) => {
                 const historyIndex = historyArray.findIndex(h => h.date === dateStr);
                 if (dailyData[key]) {
-                    const newValue = { date: dateStr, [key]: dailyData[key] };
+                    const newValue = {
+                        date: dateStr,
+                        [key]: dailyData[key]
+                    };
                     if (historyIndex > -1) {
                         historyArray[historyIndex] = newValue;
                     } else {
@@ -376,7 +439,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             if (dailyData.weight) updateHistory(weightHistory, 'weight');
-            
+
             updateUI();
         });
     };
@@ -388,8 +451,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             if (data.waterLog && data.waterLog.length > 0) {
-                 const totalWaterMl = data.waterLog.reduce((acc, log) => acc + (log && log.amount ? log.amount : 0), 0);
-                 history.push({ date: doc.id, total: totalWaterMl });
+                const totalWaterMl = data.waterLog.reduce((acc, log) => acc + (log && log.amount ? log.amount : 0), 0);
+                history.push({
+                    date: doc.id,
+                    total: totalWaterMl
+                });
             }
         });
         hydrationHistory = history.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -401,10 +467,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const history = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            if (data.weight) history.push({ date: doc.id, weight: data.weight });
+            if (data.weight) history.push({
+                date: doc.id,
+                weight: data.weight
+            });
         });
         weightHistory = history.sort((a, b) => new Date(a.date) - new Date(b.date));
-        
+
         const activeTab = dom.weightChartTabs?.querySelector('.active');
         const range = activeTab ? activeTab.dataset.range : 'week';
         renderWeightChart(range);
@@ -415,7 +484,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!isUserDataReady) return;
         const isPresentDay = getFormattedDate(selectedDate) === getFormattedDate(new Date());
         if (dom.presentDayBtn) dom.presentDayBtn.classList.toggle('hidden', isPresentDay);
-        
+
         const inputsToToggle = [dom.addGlassBtn, dom.removeGlassBtn, dom.logWeightBtn, dom.logFoodBtnDesktop, dom.logFoodBtnMobile, dom.weightInput, dom.burnedCaloriesInput, dom.logBurnedCaloriesBtn, dom.foodItemInput, dom.mealTypeSelect];
         inputsToToggle.forEach(input => {
             if (input) input.disabled = !isPresentDay;
@@ -432,8 +501,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 acc.fats += (item.nutrition.fat || 0);
             }
             return acc;
-        }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
-        
+        }, {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fats: 0
+        });
+
         const netCals = Math.round(consumedTotals.calories - burnedCalories);
 
         if (dom.consumedCaloriesSummary) dom.consumedCaloriesSummary.textContent = `${Math.round(consumedTotals.calories)} kcal`;
@@ -441,13 +515,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dom.todayGoalHighlight) dom.todayGoalHighlight.textContent = `${userSettings.calorieGoal} Kcal`;
         if (dom.burnedCaloriesSummary) dom.burnedCaloriesSummary.textContent = `${Math.round(burnedCalories)} kcal`;
         if (dom.netCaloriesSummary) dom.netCaloriesSummary.textContent = `${netCals} kcal`;
-        
+
         updateFoodLogModal(foodLog);
-        
+
         if (userSettings.isPremium) {
             dom.premiumLockOverlay.classList.add('hidden');
             dom.premiumContentWrapper.classList.remove('hidden');
-            
+
             const waterLog = dailyData.waterLog || [];
             const totalWaterMl = waterLog.reduce((acc, log) => acc + (log && log.amount ? log.amount : 0), 0);
             const caloriePercentage = userSettings.calorieGoal > 0 ? Math.round((consumedTotals.calories / userSettings.calorieGoal) * 100) : 0;
@@ -463,21 +537,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dom.calorieProgressBar.classList.remove('completed');
                 dom.calorieProgressBar.style.width = `${caloriePercentage}%`;
             }
-            
+
             if (dom.calorieSummaryText) dom.calorieSummaryText.textContent = `${Math.round(consumedTotals.calories)} / ${userSettings.calorieGoal} kcal`;
             if (dom.calorieProgressPercentage) dom.calorieProgressPercentage.textContent = `${caloriePercentage}%`;
-            
+
             const glassCount = userSettings.glassSizeMl > 0 ? Math.round(totalWaterMl / userSettings.glassSizeMl) : 0;
             if (dom.waterGlassCount) dom.waterGlassCount.textContent = `${glassCount} ${glassCount === 1 ? 'glass' : 'glasses'}`;
-            
+
             updateMacrosChart(consumedTotals.protein, consumedTotals.carbs, consumedTotals.fats);
-            
+
             const activeHydrationTab = dom.hydrationChartTabs.querySelector('.active');
             renderHydrationChart(activeHydrationTab ? activeHydrationTab.dataset.range : 'day');
 
             const activeWeightTab = dom.weightChartTabs.querySelector('.active');
             renderWeightChart(activeWeightTab ? activeWeightTab.dataset.range : 'week');
-            
+
             const hasWeightForToday = dailyData.weight && dailyData.weight > 0;
 
             if (isPresentDay) {
@@ -513,7 +587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dom.premiumActionBtn.classList.remove('hidden');
             } else {
                 dom.premiumExpiryDate.textContent = `Active until ${formatDisplayDate(expirationDate)}`;
-                dom.premiumActionBtn.classList.add('hidden'); 
+                dom.premiumActionBtn.classList.add('hidden');
             }
         } else {
             dom.premiumPlanName.textContent = 'Free Plan';
@@ -533,38 +607,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = total > 0 ? [fat, protein, carbs] : [2, 2, 1];
         const labels = ['Fat', 'Protein', 'Carbs'];
         const colors = ['#facc15', '#3b82f6', '#ef4444'];
-        const cardBackgroundColor = '#18181B'; 
+        const cardBackgroundColor = '#18181B';
 
         charts.macros = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: labels,
-                datasets: [{ 
-                    data: data, 
+                datasets: [{
+                    data: data,
                     backgroundColor: colors,
                     borderWidth: 4,
-                    borderColor: cardBackgroundColor, 
+                    borderColor: cardBackgroundColor,
                     hoverOffset: 8,
                 }]
             },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 cutout: '75%',
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: { 
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
                         enabled: total > 0,
                         callbacks: {
                             label: function(context) {
                                 let label = context.label || '';
-                                if (label) { label += ': '; }
-                                if (context.parsed !== null) { label += context.parsed.toFixed(1) + 'g'; }
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += context.parsed.toFixed(1) + 'g';
+                                }
                                 return label;
                             }
                         }
                     }
-                } 
+                }
             }
         });
 
@@ -587,11 +667,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     dom.macrosLegend.insertAdjacentHTML('beforeend', legendItemHTML);
                 });
             } else {
-                 dom.macrosLegend.innerHTML = '<p class="text-center text-sub">No macro data for this day.</p>';
+                dom.macrosLegend.innerHTML = '<p class="text-center text-sub">No macro data for this day.</p>';
             }
         }
     };
-    
+
     const renderHydrationChart = (range = 'day') => {
         if (!dom.hydrationChart) return;
         const ctx = dom.hydrationChart.getContext('2d');
@@ -614,7 +694,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sortedLog = waterLog
                 .filter(log => log && log.time && typeof log.time.seconds === 'number')
                 .sort((a, b) => a.time.seconds - b.time.seconds);
-            
+
             if (sortedLog.length === 0) {
                 showNoDataMessage(true);
                 dom.hydrationTotalIntake.textContent = `Today: 0.0L`;
@@ -630,7 +710,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return cumulativeAmount;
             });
             totalIntakeForRange = cumulativeAmount;
-            if(dom.hydrationTotalIntake) dom.hydrationTotalIntake.textContent = `Today: ${(totalIntakeForRange / 1000).toFixed(1)}L`;
+            if (dom.hydrationTotalIntake) dom.hydrationTotalIntake.textContent = `Today: ${(totalIntakeForRange / 1000).toFixed(1)}L`;
 
         } else { // week, month, all
             let startDate = new Date();
@@ -644,14 +724,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else { // 'all'
                 startDate = hydrationHistory.length > 0 ? new Date(hydrationHistory[0].date) : new Date();
             }
-            
+
             const filteredHistory = hydrationHistory.filter(item => {
                 const itemDate = new Date(item.date + 'T00:00:00');
                 return itemDate >= startDate && itemDate <= today;
             });
 
             totalIntakeForRange = filteredHistory.reduce((acc, item) => acc + item.total, 0);
-            if(dom.hydrationTotalIntake) dom.hydrationTotalIntake.textContent = `${rangeText}: ${(totalIntakeForRange / 1000).toFixed(1)}L`;
+            if (dom.hydrationTotalIntake) dom.hydrationTotalIntake.textContent = `${rangeText}: ${(totalIntakeForRange / 1000).toFixed(1)}L`;
 
             if (filteredHistory.length < 2 && range !== 'all') {
                 labels = [];
@@ -670,14 +750,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showNoDataMessage(labels.length === 0);
             }
         }
-        
-        if(dom.hydrationGoal) dom.hydrationGoal.textContent = `Goal: ${userSettings.waterGoalLiters.toFixed(1)}L`;
+
+        if (dom.hydrationGoal) dom.hydrationGoal.textContent = `Goal: ${userSettings.waterGoalLiters.toFixed(1)}L`;
 
         const timeSettings = {
-            day: { unit: 'hour', tooltipFormat: 'h:mm a', displayFormats: { hour: 'h a' } },
-            week: { unit: 'day', tooltipFormat: 'MMM d', displayFormats: { day: 'EEE' } },
-            month: { unit: 'week', tooltipFormat: 'MMM d', displayFormats: { week: 'MMM d' } },
-            all: { unit: 'month', tooltipFormat: 'MMM yyyy', displayFormats: { month: 'MMM yy' } }
+            day: {
+                unit: 'hour',
+                tooltipFormat: 'h:mm a',
+                displayFormats: {
+                    hour: 'h a'
+                }
+            },
+            week: {
+                unit: 'day',
+                tooltipFormat: 'MMM d',
+                displayFormats: {
+                    day: 'EEE'
+                }
+            },
+            month: {
+                unit: 'week',
+                tooltipFormat: 'MMM d',
+                displayFormats: {
+                    week: 'MMM d'
+                }
+            },
+            all: {
+                unit: 'month',
+                tooltipFormat: 'MMM yyyy',
+                displayFormats: {
+                    month: 'MMM yy'
+                }
+            }
         };
 
         charts.hydration = new Chart(ctx, {
@@ -706,7 +810,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     x: {
                         type: 'time',
                         time: timeSettings[range],
-                        grid: { display: false },
+                        grid: {
+                            display: false
+                        },
                         ticks: {
                             color: 'rgba(255, 255, 255, 0.7)',
                             maxTicksLimit: window.innerWidth < 768 ? 5 : (range === 'week' ? 7 : 6),
@@ -728,7 +834,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 },
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: false
+                    },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
@@ -764,7 +872,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 displayWeight = selectedDayWeightEntry.weight;
             } else if (weightHistory.length > 0) {
                 const relevantHistory = weightHistory.filter(item => new Date(item.date) <= selectedDate);
-                if(relevantHistory.length > 0) {
+                if (relevantHistory.length > 0) {
                     displayWeight = relevantHistory[relevantHistory.length - 1].weight;
                 }
             }
@@ -783,7 +891,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else { // 'all'
             startDate = weightHistory.length > 0 ? new Date(weightHistory[0].date) : new Date();
         }
-        
+
         filteredHistory = weightHistory.filter(item => {
             const itemDate = new Date(item.date + 'T00:00:00');
             return itemDate >= startDate && itemDate <= today;
@@ -802,13 +910,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             labels = filteredHistory.map(item => new Date(item.date + 'T00:00:00'));
             dataPoints = filteredHistory.map(item => item.weight);
         }
-        
+
         showNoDataMessage(dataPoints.every(p => p === null || p === undefined));
-        
+
         const timeSettings = {
-            week: { unit: 'day', tooltipFormat: 'MMM d, yyyy', displayFormats: { day: 'EEE' } },
-            month: { unit: 'week', tooltipFormat: 'MMM d, yyyy', displayFormats: { week: 'MMM d' } },
-            all: { unit: 'month', tooltipFormat: 'MMM yyyy', displayFormats: { month: 'MMM yy' } }
+            week: {
+                unit: 'day',
+                tooltipFormat: 'MMM d, yyyy',
+                displayFormats: {
+                    day: 'EEE'
+                }
+            },
+            month: {
+                unit: 'week',
+                tooltipFormat: 'MMM d, yyyy',
+                displayFormats: {
+                    week: 'MMM d'
+                }
+            },
+            all: {
+                unit: 'month',
+                tooltipFormat: 'MMM yyyy',
+                displayFormats: {
+                    month: 'MMM yy'
+                }
+            }
         };
 
         charts.weight = new Chart(ctx, {
@@ -837,12 +963,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     x: {
                         type: 'time',
                         time: timeSettings[range],
-                        grid: { display: false },
-                        ticks: { color: 'rgba(255, 255, 255, 0.7)', maxTicksLimit: 7 }
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            maxTicksLimit: 7
+                        }
                     },
                     y: {
                         beginAtZero: false,
-                        grid: { color: 'rgba(255, 255, 255, 0.2)', borderDash: [5, 5] },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.2)',
+                            borderDash: [5, 5]
+                        },
                         ticks: {
                             color: 'rgba(255, 255, 255, 0.7)',
                             callback: (value) => `${value} kg`,
@@ -851,7 +985,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 },
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: false
+                    },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
@@ -866,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const updateFoodLogModal = (foodLog) => {
         if (!dom.foodLogModalList) return;
         dom.foodLogModalList.innerHTML = '';
-        
+
         if (foodLog && foodLog.length > 0) {
             foodLog.forEach((item, index) => {
                 if (item && item.nutrition) {
@@ -877,8 +1013,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="font-semibold">${item.foodItem} <span class="text-sm font-normal text-sub">(${item.mealType})</span></p>
                             <p class="text-xs text-sub">~${Math.round(item.nutrition.calories)} kcal | P: ${item.nutrition.protein}g | C: ${item.nutrition.carbohydrates}g | F: ${item.nutrition.fat}g</p>
                         </div>
-                        <button 
-                            onclick="window.healthHub.deleteLoggedFoodItem(${index})" 
+                        <button
+                            onclick="window.healthHub.deleteLoggedFoodItem(${index})"
                             class="text-red-500 hover:text-red-400 p-2 rounded-full -mr-2 flex-shrink-0 transition-colors"
                             aria-label="Remove ${item.foodItem}"
                         >
@@ -901,13 +1037,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!userUid) return;
         const dateStr = getFormattedDate(new Date());
         const dailyDocRef = doc(db, 'users', userUid, 'dailyData', dateStr);
-        await setDoc(dailyDocRef, payload, { merge: true });
+        await setDoc(dailyDocRef, payload, {
+            merge: true
+        });
     };
 
     const saveUserSettings = async (settings) => {
         if (!userUid) return;
         const userDocRef = doc(db, 'users', userUid);
-        await setDoc(userDocRef, settings, { merge: true });
+        await setDoc(userDocRef, settings, {
+            merge: true
+        });
     };
 
     // --- EVENT HANDLERS & BINDING ---
@@ -919,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dom.ageInput) dom.ageInput.value = userSettings.age || '';
         if (dom.heightInput) dom.heightInput.value = userSettings.height || '';
         if (dom.activityLevelSelect) dom.activityLevelSelect.value = userSettings.activityLevel || 'sedentary';
-        
+
         if (dom.profileModal) dom.profileModal.classList.remove('hidden');
         if (dom.preferencesInputs) dom.preferencesInputs.classList.add('hidden');
         if (dom.healthProfileInputs) dom.healthProfileInputs.classList.add('hidden');
@@ -927,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dom.body.setAttribute('data-no-scroll', 'true');
         updateInputStyles();
     };
-    
+
     const handleProfileClose = () => {
         if (dom.profileModal) dom.profileModal.classList.add('hidden');
         dom.body.removeAttribute('data-no-scroll');
@@ -967,79 +1107,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.stopPropagation();
         if (dom.weightInput.value) {
             const weight = parseFloat(dom.weightInput.value);
-            if (weight > 0) { updateDailyData({ weight }); dom.weightInput.value = ''; updateInputStyles(); }
+            if (weight > 0) {
+                updateDailyData({
+                    weight
+                });
+                dom.weightInput.value = '';
+                updateInputStyles();
+            }
         }
     };
 
     const handleLogBurnedCalories = () => {
-        if(dom.burnedCaloriesInput.value) {
+        if (dom.burnedCaloriesInput.value) {
             const calories = parseInt(dom.burnedCaloriesInput.value);
-            if (calories > 0) { updateDailyData({ burnedCalories: increment(calories) }); dom.burnedCaloriesInput.value = ''; updateInputStyles(); }
+            if (calories > 0) {
+                updateDailyData({
+                    burnedCalories: increment(calories)
+                });
+                dom.burnedCaloriesInput.value = '';
+                updateInputStyles();
+            }
         }
     };
 
-    const handleFoodLogSubmit = async (e) => {
-        e.preventDefault();
-        const foodItem = dom.foodItemInput.value;
-        if (!foodItem) return;
-        dom.logFoodBtn.disabled = true; 
-        dom.logFoodBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>'; 
-        if(dom.foodLogError) dom.foodLogError.classList.add('hidden');
-        
-        try {
-            let nutritionData;
-            if (preloadedNutritionData) {
-                nutritionData = preloadedNutritionData;
-            } else {
-                const prompt = `Analyze the exact nutritional content for "${foodItem}". Provide a valid JSON object with ONLY these keys: "calories", "protein", "carbohydrates", "fat". The values must be numbers. Do not include any text, just the JSON.`;
-                const payload = { contents: [{ parts: [{ text: prompt }] }] };
-                const result = await geminiFetchWithCooldown(payload);
-                
-                if (!result.candidates || !result.candidates[0] || !result.candidates[0].content || !result.candidates[0].content.parts || !result.candidates[0].content.parts[0] || !result.candidates[0].content.parts[0].text) {
-                    throw new Error("Invalid response from API.");
-                }
-                const jsonText = result.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
-                nutritionData = JSON.parse(jsonText);
-            }
-
-            const newLogEntry = { 
-                foodItem, 
-                mealType: dom.mealTypeSelect.value, 
-                nutrition: { 
-                    calories: Number(nutritionData.calories) || 0, 
-                    protein: Number(nutritionData.protein) || 0, 
-                    carbohydrates: Number(nutritionData.carbohydrates) || 0, 
-                    fat: Number(nutritionData.fat) || 0 
-                } 
-            };
-            await updateDailyData({ foodLog: arrayUnion(newLogEntry) });
-            
-            dom.foodLogForm.reset();
-            updateInputStyles();
-            dom.foodLoggingModal.classList.add('hidden');
-            showPopup('Food item logged successfully!');
-
-        } catch (error) {
-            if(dom.foodLogError) {
-                dom.foodLogError.textContent = `Error: ${error.message}`;
-                dom.foodLogError.classList.remove('hidden');
-            }
-        } finally {
-            preloadedNutritionData = null; 
-            dom.logFoodBtn.disabled = false; 
-            dom.logFoodBtn.textContent = 'Analyze & Log'; 
-        }
-    };
-    
     // --- CALENDAR LOGIC ---
     const renderCalendar = (year, month) => {
         if (!dom.calendarGrid || !dom.monthYearDisplay) return;
         dom.calendarGrid.innerHTML = '';
-        dom.monthYearDisplay.textContent = new Date(year, month).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-        
+        dom.monthYearDisplay.textContent = new Date(year, month).toLocaleString('en-US', {
+            month: 'long',
+            year: 'numeric'
+        });
+
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
+
         for (let i = 0; i < firstDay; i++) {
             dom.calendarGrid.insertAdjacentHTML('beforeend', '<div></div>');
         }
@@ -1057,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dom.calendarGrid.appendChild(dayEl);
         }
     };
-    
+
     const handleFirstScroll = () => {
         if (dom.scrollIndicator) dom.scrollIndicator.classList.add('hidden');
         localStorage.setItem('hasScrolled', 'true');
@@ -1084,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dom.premiumBtn) dom.premiumBtn.addEventListener('click', () => {
             if (dom.premiumDetails) dom.premiumDetails.classList.toggle('hidden');
         });
-        
+
         if (dom.logoutBtn) dom.logoutBtn.addEventListener('click', () => signOut(auth));
         if (dom.resetPasswordBtn) dom.resetPasswordBtn.addEventListener('click', async () => {
             try {
@@ -1094,7 +1196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showPopup(error.message, true);
             }
         });
-        
+
         if (dom.presentDayBtn) dom.presentDayBtn.addEventListener('click', () => {
             selectedDate = new Date();
             if (dom.dateDisplay) dom.dateDisplay.textContent = formatDisplayDate(selectedDate);
@@ -1106,17 +1208,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (dom.consumedCaloriesCard) dom.consumedCaloriesCard.addEventListener('click', () => dom.foodLogModal.classList.remove('hidden'));
         if (dom.closeFoodLogModalBtn) dom.closeFoodLogModalBtn.addEventListener('click', () => dom.foodLogModal.classList.add('hidden'));
-        
+
         const openFoodLogger = () => {
-            preloadedNutritionData = null; 
+            preloadedNutritionData = null;
             dom.foodLoggingModal.classList.remove('hidden');
         };
         if (dom.logFoodBtnDesktop) dom.logFoodBtnDesktop.addEventListener('click', openFoodLogger);
         if (dom.logFoodBtnMobile) dom.logFoodBtnMobile.addEventListener('click', openFoodLogger);
         if (dom.closeFoodLoggingModalBtn) dom.closeFoodLoggingModalBtn.addEventListener('click', () => dom.foodLoggingModal.classList.add('hidden'));
-        
+
         if (dom.addGlassBtn) dom.addGlassBtn.addEventListener('click', () => {
-            updateDailyData({ waterLog: arrayUnion({ time: new Date(), amount: userSettings.glassSizeMl }) });
+            updateDailyData({
+                waterLog: arrayUnion({
+                    time: new Date(),
+                    amount: userSettings.glassSizeMl
+                })
+            });
         });
         if (dom.removeGlassBtn) dom.removeGlassBtn.addEventListener('click', async () => {
             if (dailyData.waterLog && dailyData.waterLog.length > 0) {
@@ -1125,7 +1232,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .filter(log => log && log.time && typeof log.time.seconds === 'number')
                     .sort((a, b) => a.time.seconds - b.time.seconds);
                 sortedLog.pop();
-                await updateDoc(doc(db, 'users', userUid, 'dailyData', dateStr), { waterLog: sortedLog });
+                await updateDoc(doc(db, 'users', userUid, 'dailyData', dateStr), {
+                    waterLog: sortedLog
+                });
             }
         });
         if (dom.logWeightBtn) dom.logWeightBtn.addEventListener('click', handleLogWeight);
@@ -1153,10 +1262,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dom.calendarModal.classList.add('hidden');
             }
         });
-        
+
         if (dom.presentDayBtn) {
             dom.presentDayBtn.addEventListener('click', () => {
-                selectedDate = new Date(); 
+                selectedDate = new Date();
                 if (dom.dateDisplay) {
                     dom.dateDisplay.textContent = formatDisplayDate(selectedDate);
                 }
@@ -1176,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         }
-        
+
         if (dom.weightChartTabs) {
             dom.weightChartTabs.addEventListener('click', (e) => {
                 const button = e.target.closest('.tab-button');
@@ -1193,10 +1302,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             input.addEventListener('input', updateInputStyles);
             input.addEventListener('blur', updateInputStyles);
         });
-        
+
         if (!localStorage.getItem('hasScrolled')) {
             if (dom.scrollIndicator) dom.scrollIndicator.classList.remove('hidden');
-            window.addEventListener('scroll', handleFirstScroll, { once: true });
+            window.addEventListener('scroll', handleFirstScroll, {
+                once: true
+            });
         }
     }
 

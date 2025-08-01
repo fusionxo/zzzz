@@ -107,7 +107,7 @@
                 <circle class="arc arc-inner" cx="100" cy="100" r="55"></circle>
             </g>
         </svg>
-        <p class="mt-4 text-gray-400">Loading Configuration...</p>
+        <p class="mt-4 text-gray-400">Authenticating...</p>
     </div>
 
     <div id="login-container" class="form-container max-w-md w-full p-8 sm:p-10 rounded-2xl shadow-2xl hidden">
@@ -157,13 +157,11 @@
         <div class="mt-8 text-center">
             <p class="text-sm text-gray-500">
                 New to Calverse?
-                <a href="/register.html" class="font-medium text-amber-400 hover:underline">Register now</a>
+                <a href="register.html" class="font-medium text-amber-400 hover:underline">Register now</a>
             </p>
         </div>
     </div>
 
-    <!-- Load config first, then the page-specific script -->
-    <script src="..firebase-init.js"></script> <!-- Corrected Path -->
-    <script src="..login.js"></script> <!-- Corrected Path -->
+    <script type="module" src="../script/login.js"></script>
 </body>
 </html>
