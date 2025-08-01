@@ -48,7 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleNutritionSearch = async () => {
         const foodItemQuery = dom.searchInput.value;
         if (!foodItemQuery) return;
-        const sanitizedFoodItemQuery = DOMPurify.sanitize(foodItemQuery);
+        // REMOVED: DOMPurify.sanitize()
+        const sanitizedFoodItemQuery = foodItemQuery;
 
         let quantityBeforeSearch = parseFloat(dom.quantityBeforeSearchInput.value);
         if (isNaN(quantityBeforeSearch) || quantityBeforeSearch <= 0) {
@@ -89,7 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
             carbohydrates: parseFloat((baseData.carbohydrates * displayMultiplier).toFixed(1)),
             fat: parseFloat((baseData.fat * displayMultiplier).toFixed(1)),
         };
-        const sanitizedFoodItem = DOMPurify.sanitize(foodItem);
+        // REMOVED: DOMPurify.sanitize()
+        const sanitizedFoodItem = foodItem;
         dom.resultsContainer.innerHTML = `
             <div class="card p-4">
                 <h4 class="font-bold text-lg capitalize">${sanitizedFoodItem}</h4>

@@ -51,7 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleFindRecipes = async () => {
         const ingredients = dom.ingredientsInput.value.trim();
         if (!ingredients) { /* ... */ return; }
-        const sanitizedIngredients = DOMPurify.sanitize(ingredients);
+        // REMOVED: DOMPurify.sanitize()
+        const sanitizedIngredients = ingredients;
         showStatus(dom.recipeResults, 'loading');
         dom.findRecipesBtn.disabled = true;
         try {
@@ -77,7 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleSolveCraving = async () => {
         const craving = dom.cravingInput.value.trim();
         if (!craving) { /* ... */ return; }
-        const sanitizedCraving = DOMPurify.sanitize(craving);
+        // REMOVED: DOMPurify.sanitize()
+        const sanitizedCraving = craving;
         showStatus(dom.cravingResults, 'loading');
         dom.solveCravingBtn.disabled = true;
         try {
@@ -103,7 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleMakeover = async () => {
         const ingredients = dom.makeoverInput.value.trim();
         if (!ingredients) { /* ... */ return; }
-        const sanitizedIngredients = DOMPurify.sanitize(ingredients);
+        // REMOVED: DOMPurify.sanitize()
+        const sanitizedIngredients = ingredients;
         showStatus(dom.makeoverResults, 'loading');
         dom.makeoverBtn.disabled = true;
         try {
@@ -129,12 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatus(dom.makeoverResults, 'error', 'Received an invalid format for the makeover.');
             return;
         }
-        const sanitizedSavings = DOMPurify.sanitize(makeover.estimated_savings);
+        // REMOVED: DOMPurify.sanitize()
+        const sanitizedSavings = makeover.estimated_savings;
         const savingsHTML = makeover.estimated_savings ? `<div class="p-4 rounded-lg bg-primary/10 text-primary text-center font-semibold mb-4">${sanitizedSavings}</div>` : '';
         const swapsHTML = makeover.swaps.map(swap => {
-            const sanitizedOriginal = DOMPurify.sanitize(swap.original);
-            const sanitizedSwap = DOMPurify.sanitize(swap.swap);
-            const sanitizedNotes = DOMPurify.sanitize(swap.notes);
+            // REMOVED: DOMPurify.sanitize()
+            const sanitizedOriginal = swap.original;
+            const sanitizedSwap = swap.swap;
+            const sanitizedNotes = swap.notes;
             return `
             <div class="grid grid-cols-3 items-center gap-4 text-sm">
                 <div class="text-center p-2 rounded bg-red-900/40">${sanitizedOriginal}</div>
