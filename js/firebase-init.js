@@ -34,12 +34,12 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 // You can find this in your project's settings in the Firebase console.
 // =================================================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyAS1fvvgtRXx9wLwmJec-2tkBX2PlnAuN0",
+    authDomain: "calversev2.firebaseapp.com",
+    projectId: "calversev2",
+    storageBucket: "calversev2.appspot.com",
+    messagingSenderId: "794294005093",
+    appId: "1:794294005093:web:6104521d5e4a2de812858c",
 };
 
 // Initialize Firebase services
