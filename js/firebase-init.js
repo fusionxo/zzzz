@@ -1,73 +1,37 @@
 /**
- * @fileoverview Initializes Firebase and exports the necessary services and functions.
- * This file uses ES Module syntax (import/export) to be compatible with modern browsers.
- * @version 2.0.0
+ * @fileoverview Netlify function to securely provide public Firebase
+ * configuration variables to the client-side application.
+ * It reads from the Netlify environment variables and returns them as JSON.
  */
 
-// Use ES Module imports from the Firebase CDN
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-import { 
-    getAuth, 
-    onAuthStateChanged, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    signOut,
-    sendPasswordResetEmail
-} from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-import { 
-    getFirestore, 
-    doc, 
-    getDoc, 
-    setDoc, 
-    collection, 
-    addDoc, 
-    updateDoc,
-    serverTimestamp,
-    query,
-    where,
-    getDocs
-} from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-functions.js";
+exports.handler = async function(event, context) {
+  // Check to ensure the request is a GET request
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      body: 'Method Not Allowed',
+    };
+  }
 
-// =================================================================================
-// IMPORTANT: Replace with your actual Firebase project configuration
-// You can find this in your project's settings in the Firebase console.
-// =================================================================================
-const firebaseConfig = {
-    apiKey: "AIzaSyAS1fvvgtRXx9wLwmJec-2tkBX2PlnAuN0",
-    authDomain: "calversev2.firebaseapp.com",
-    projectId: "calversev2",
-    storageBucket: "calversev2.appspot.com",
-    messagingSenderId: "794294005093",
-    appId: "1:794294005093:web:6104521d5e4a2de812858c",
-};
+  // These are your PUBLIC Firebase keys. It is safe to expose these
+  // in client-side code. Never expose server-side keys or secrets.
+  const firebaseConfig = {
+    apiKey: process.env.FIREBASE_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+    databaseURL: process.env.FIREBASE_DATABASE_URL,
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.FIREBASE_APP_ID,
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID,
+  };
 
-// Initialize Firebase services
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const functions = getFunctions(app);
-
-// Export everything needed by other modules so they can be imported elsewhere.
-export { 
-    app, 
-    auth, 
-    db, 
-    functions,
-    onAuthStateChanged,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    sendPasswordResetEmail,
-    doc,
-    getDoc,
-    setDoc,
-    collection,
-    addDoc,
-    updateDoc,
-    serverTimestamp,
-    httpsCallable,
-    query,
-    where,
-    getDocs
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*', // Or specify your domain for better security
+    },
+    body: JSON.stringify(firebaseConfig),
+  };
 };
