@@ -1,45 +1,73 @@
 /**
- * @fileoverview Netlify serverless function to securely expose
- * Firebase configuration to the client-side application.
+ * @fileoverview Initializes Firebase and exports the necessary services and functions.
+ * This file uses ES Module syntax (import/export) to be compatible with modern browsers.
+ * @version 2.0.0
  */
 
-exports.handler = async function(event, context) {
-  // Check to ensure the request is a GET request
-  if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method Not Allowed' }),
-    };
-  }
+// Use ES Module imports from the Firebase CDN
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+import { 
+    getAuth, 
+    onAuthStateChanged, 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut,
+    sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+import { 
+    getFirestore, 
+    doc, 
+    getDoc, 
+    setDoc, 
+    collection, 
+    addDoc, 
+    updateDoc,
+    serverTimestamp,
+    query,
+    where,
+    getDocs
+} from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-functions.js";
 
-  // These variables are pulled from your Netlify build settings.
-  const firebaseConfig = {
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.FIREBASE_APP_ID,
-    measurementId: process.env.FIREBASE_MEASUREMENT_ID, // Optional
-  };
+// =================================================================================
+// IMPORTANT: Replace with your actual Firebase project configuration
+// You can find this in your project's settings in the Firebase console.
+// =================================================================================
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
 
-  // Basic validation to ensure all required keys are present
-  for (const key in firebaseConfig) {
-    if (key !== 'measurementId' && !firebaseConfig[key]) {
-      console.error(`Missing environment variable: ${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Server configuration error. A Firebase environment variable is missing.' }),
-      };
-    }
-  }
+// Initialize Firebase services
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const functions = getFunctions(app);
 
-  return {
-    statusCode: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*', // Or specify your site's domain for better security
-    },
-    body: JSON.stringify(firebaseConfig),
-  };
+// Export everything needed by other modules so they can be imported elsewhere.
+export { 
+    app, 
+    auth, 
+    db, 
+    functions,
+    onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    sendPasswordResetEmail,
+    doc,
+    getDoc,
+    setDoc,
+    collection,
+    addDoc,
+    updateDoc,
+    serverTimestamp,
+    httpsCallable,
+    query,
+    where,
+    getDocs
 };
