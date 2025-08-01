@@ -1,16 +1,12 @@
 /**
  * @fileoverview Handles the Nutrition Lookup feature in the Food Planner section.
- * @version 1.1.2
+ * This version uses a secure Netlify proxy for all API calls.
+ * @version 2.0.0
  */
-document.addEventListener('DOMContentLoaded', async () => {
-    // Wait for Firebase and config to be ready
-    await window.firebaseReady;
+document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
-    // Ensure the global namespace exists
     window.healthHub = window.healthHub || {};
-
-    const { geminiApiKeys } = window.firebaseInstances || {};
 
     const dom = {
         searchInput: document.getElementById('nutrition-search-input'),
@@ -19,72 +15,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsContainer: document.getElementById('nutrition-results'),
     };
 
-    // --- Gemini API Configuration with Failover ---
-    const GEMINI_API_CONFIGS = (geminiApiKeys.food || []).map(key => ({
-        key,
-        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-    }));
-    
-    let currentApiIndex = 0;
-    let lastApiCallTimestamp = 0;
-    const API_COOLDOWN = 4000; // 4 seconds
-
     /**
-     * Shows a temporary message in the result container.
-     * @param {string} message - The message to display.
-     * @param {boolean} isError - If true, formats the message as an error.
+     * Calls our secure Netlify proxy function.
+     * @param {string} prompt - The prompt to send.
+     * @param {string} type - The category of the call ('analyzer', 'dashboard', etc.)
+     * @returns {Promise<Object>} The JSON response from the proxy.
      */
+    const callProxyApi = async (prompt, type) => {
+        try {
+            const response = await fetch('/api/gemini-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, type })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message || `Proxy Error: ${response.statusText}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to call proxy function:', error);
+            throw error;
+        }
+    };
+    
     const showStatus = (message, isError = false) => {
         if (!dom.resultsContainer) return;
         const colorClass = isError ? 'text-red-400' : 'text-sub';
         dom.resultsContainer.innerHTML = `<div class="${colorClass} text-center">${message}</div>`;
     };
-
-    /**
-     * Fetches data from Gemini API with cooldown and failover logic.
-     * @param {string} prompt - The prompt to send to the API.
-     * @returns {Promise<Object>} The JSON response from the API.
-     */
-    const geminiFetchWithCooldown = async (prompt) => {
-        const now = Date.now();
-        if (now - lastApiCallTimestamp < API_COOLDOWN) {
-            throw new Error(`Please wait ${Math.ceil((API_COOLDOWN - (now - lastApiCallTimestamp)) / 1000)}s.`);
-        }
-        
-        if (GEMINI_API_CONFIGS.length === 0) {
-             throw new Error("API keys are not configured.");
-        }
-
-        let lastError = null;
-
-        for (let i = 0; i < GEMINI_API_CONFIGS.length; i++) {
-            const config = GEMINI_API_CONFIGS[currentApiIndex];
-            const apiUrl = `${config.url}?key=${config.key}`;
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error.message || `API Error: ${response.statusText}`);
-                }
-
-                lastApiCallTimestamp = Date.now();
-                return await response.json();
-
-            } catch (error) {
-                console.warn(`API at index ${currentApiIndex} failed. Trying next...`, error);
-                lastError = error;
-                currentApiIndex = (currentApiIndex + 1) % GEMINI_API_CONFIGS.length;
-            }
-        }
-        throw new Error(`All API attempts failed. Last error: ${lastError.message}`);
-    };
-
 
     const handleNutritionSearch = async () => {
         const foodItemQuery = dom.searchInput.value;
@@ -102,7 +61,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const prompt = `Analyze the exact nutritional content for "${sanitizedFoodItemQuery}" per 100g. Provide a valid JSON object with ONLY these keys: "calories", "protein", "carbohydrates", "fat". The values must be numbers. Do not include any text, just the JSON.`;
 
-            const result = await geminiFetchWithCooldown(prompt);
+            // REPLACED: Call the secure proxy
+            const result = await callProxyApi(prompt, 'food');
 
             if (!result.candidates || !result.candidates[0].content.parts[0].text) {
                 throw new Error('Invalid response from API.');
@@ -120,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    const renderNutritionResults = (foodItem, baseData, displayQuantity) => {
+     const renderNutritionResults = (foodItem, baseData, displayQuantity) => {
 
         const displayMultiplier = displayQuantity / 100.0;
         const displayData = {
@@ -199,10 +159,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     if (dom.searchBtn) {
-        if (GEMINI_API_CONFIGS.length === 0 || !GEMINI_API_CONFIGS[0].key) {
-            console.error("Gemini API keys for Food Lookup are not configured.");
-            dom.searchBtn.disabled = true;
-        }
         dom.searchBtn.addEventListener('click', handleNutritionSearch);
     }
 });
